@@ -1,0 +1,14 @@
+{
+    "banking_stocks": {
+        "AKBNK.IS": "Akbank",
+        "GARAN.IS": "Garanti BBVA",
+        "ISCTR.IS": "Türkiye İş Bankası C",
+        "YKBNK.IS": "Yapı Kredi",
+        "VAKBN.IS": "Vakıfbank",
+        "HALKB.IS": "Halkbank"
+    },
+    "benchmark": {
+        "XU100.IS": "BIST 100 Index"
+    },
+    "start_date": "2018-01-01"
+}

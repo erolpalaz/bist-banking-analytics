@@ -1,45 +1,10 @@
 from pathlib import Path
-import sys
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-
-# --------------------------------------------------
-# Project paths
-# --------------------------------------------------
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.append(str(PROJECT_ROOT))
-
-
-DATA_DIR = PROJECT_ROOT / "data"
-PROCESSED_DIR = DATA_DIR / "processed"
-OUTPUTS_DIR = PROJECT_ROOT / "outputs"
-
-
-STOCK_WEEKLY_PATH = PROCESSED_DIR / "stock_prices_weekly.csv"
-STOCK_MACRO_PATH = PROCESSED_DIR / "stock_macro_weekly.csv"
-
-RISK_METRICS_PATH = OUTPUTS_DIR / "risk_metrics.csv"
-RISK_SCORES_PATH = OUTPUTS_DIR / "risk_scores.csv"
-
-MACRO_CORR_PATH = OUTPUTS_DIR / "macro_correlation_all_variables.csv"
-MACRO_MODEL_SUMMARY_PATH = OUTPUTS_DIR / "macro_model_summary.csv"
-FUNDING_SUMMARY_PATH = OUTPUTS_DIR / "funding_cost_change_summary.csv"
-
-CORE_USD_PATH = OUTPUTS_DIR / "macro_regression_core_usd_model.csv"
-CORE_EUR_PATH = OUTPUTS_DIR / "macro_regression_core_eur_model.csv"
-FUNDING_LEVEL_PATH = OUTPUTS_DIR / "macro_regression_funding_cost_level_model.csv"
-FUNDING_CHANGE_PATH = OUTPUTS_DIR / "macro_regression_funding_cost_change_model.csv"
-
-
-# --------------------------------------------------
-# Streamlit config
-# --------------------------------------------------
 
 st.set_page_config(
     page_title="BIST Banking Analytics",
@@ -48,680 +13,915 @@ st.set_page_config(
 )
 
 
-# --------------------------------------------------
-# Helper functions
-# --------------------------------------------------
+ROOT_DIR = Path(__file__).resolve().parents[1]
+DATA_DIR = ROOT_DIR / "data"
+PROCESSED_DIR = DATA_DIR / "processed"
+OUTPUTS_DIR = ROOT_DIR / "outputs"
+
+
+PATHS = {
+    "stock_weekly": PROCESSED_DIR / "stock_prices_weekly.csv",
+    "stock_macro_weekly": PROCESSED_DIR / "stock_macro_weekly.csv",
+    "risk_metrics": OUTPUTS_DIR / "risk_metrics.csv",
+    "risk_scores": OUTPUTS_DIR / "risk_scores.csv",
+    "macro_correlation": OUTPUTS_DIR / "macro_correlation_all_variables.csv",
+    "macro_model_summary": OUTPUTS_DIR / "macro_model_summary.csv",
+    "macro_model_diagnostics": OUTPUTS_DIR / "macro_model_diagnostics.csv",
+    "macro_vif_results": OUTPUTS_DIR / "macro_vif_results.csv",
+    "robust_summary": OUTPUTS_DIR / "robust_macro_regression_summary.csv",
+    "robust_all_models": OUTPUTS_DIR / "robust_macro_regression_all_models.csv",
+}
+
+
+REGRESSION_FILE_MAP = {
+    "core_usd_model": OUTPUTS_DIR / "macro_regression_core_usd_model.csv",
+    "core_eur_model": OUTPUTS_DIR / "macro_regression_core_eur_model.csv",
+    "funding_cost_level_model": OUTPUTS_DIR / "macro_regression_funding_cost_level_model.csv",
+    "funding_cost_change_model": OUTPUTS_DIR / "macro_regression_funding_cost_change_model.csv",
+}
+
+
+ROBUST_FILE_MAP = {
+    "core_usd_model": OUTPUTS_DIR / "robust_macro_regression_core_usd_model.csv",
+    "core_eur_model": OUTPUTS_DIR / "robust_macro_regression_core_eur_model.csv",
+    "funding_cost_level_model": OUTPUTS_DIR / "robust_macro_regression_funding_cost_level_model.csv",
+    "funding_cost_change_model": OUTPUTS_DIR / "robust_macro_regression_funding_cost_change_model.csv",
+}
+
+
+def file_is_available(path: Path) -> bool:
+    return path.exists() and path.stat().st_size > 0
+
 
 @st.cache_data
-def load_csv(path: Path) -> pd.DataFrame:
-    """Load CSV file with Date parsing when available."""
-    if not path.exists():
-        raise FileNotFoundError(f"File not found: {path}")
+def load_csv(path: Path, parse_dates: list[str] | None = None) -> pd.DataFrame:
+    if not file_is_available(path):
+        return pd.DataFrame()
 
-    df = pd.read_csv(path)
-
-    if "Date" in df.columns:
-        df["Date"] = pd.to_datetime(df["Date"])
-
-    return df
+    try:
+        return pd.read_csv(path, parse_dates=parse_dates)
+    except Exception:
+        return pd.DataFrame()
 
 
-def load_optional_csv(path: Path) -> pd.DataFrame | None:
-    """Load CSV if it exists, otherwise return None."""
-    if not path.exists():
-        return None
+def show_missing_file_warning(path: Path, command: str | None = None):
+    st.warning(f"Required file is missing or empty: `{path}`")
 
-    df = pd.read_csv(path)
+    if command:
+        st.code(command, language="bash")
 
-    if "Date" in df.columns:
-        df["Date"] = pd.to_datetime(df["Date"])
 
-    return df
+def get_available_columns(df: pd.DataFrame, columns: list[str]) -> list[str]:
+    available = []
+    seen = set()
+
+    for col in columns:
+        if col in df.columns and col not in seen:
+            available.append(col)
+            seen.add(col)
+
+    return available
 
 
 def format_percentage(value):
-    """Format decimal values as percentage."""
     if pd.isna(value):
-        return "-"
+        return ""
 
     return f"{value:.2%}"
 
 
-def format_number(value, digits=4):
-    """Format numeric values safely."""
+def format_decimal(value):
     if pd.isna(value):
-        return "-"
+        return ""
 
-    return f"{value:.{digits}f}"
+    return f"{value:.4f}"
 
 
-def get_price_column(df: pd.DataFrame) -> str:
-    """Choose adjusted close if available, otherwise close."""
-    if "Adj_Close" in df.columns:
-        return "Adj_Close"
+def clean_warning_text(value):
+    if pd.isna(value):
+        return "not_available"
 
-    if "Close" in df.columns:
-        return "Close"
+    return str(value).replace(";", "; ")
 
-    raise ValueError("Neither Adj_Close nor Close column found.")
 
+def split_diagnostic_warnings(warning_series: pd.Series) -> pd.DataFrame:
+    """
+    Split combined diagnostic warning strings into individual warning counts.
 
-def normalize_price_series(series: pd.Series) -> pd.Series:
-    """Normalize a price series to base 100."""
-    clean_series = series.dropna()
+    Example:
+    'low_explanatory_power; residuals_not_normal'
+    becomes two separate warning items.
+    """
+    warning_items = []
 
-    if clean_series.empty:
-        return pd.Series(index=series.index, dtype="float64")
+    for warning_text in warning_series.fillna("not_available"):
+        parts = str(warning_text).split(";")
 
-    base_value = clean_series.iloc[0]
+        for part in parts:
+            cleaned = part.strip()
 
-    if base_value == 0:
-        return pd.Series(index=series.index, dtype="float64")
+            if cleaned:
+                warning_items.append(cleaned)
 
-    return series / base_value * 100
+    if not warning_items:
+        return pd.DataFrame(columns=["diagnostic_warning", "count"])
 
-
-def add_normalized_price(df: pd.DataFrame) -> pd.DataFrame:
-    """Create normalized price index with base 100."""
-    price_col = get_price_column(df)
-
-    result = df.copy()
-    result = result.sort_values(["Ticker", "Date"])
-
-    result["normalized_price"] = result.groupby("Ticker")[price_col].transform(
-        normalize_price_series
-    )
-
-    return result
-
-
-def display_missing_file_warning(files: list[Path], command: str):
-    """Show missing file warning."""
-    missing = [path.name for path in files if not path.exists()]
-
-    if missing:
-        st.warning(
-            "Required output files are missing.\n\n"
-            f"Missing files: {missing}\n\n"
-            "Run this command in terminal:\n\n"
-            f"`{command}`"
-        )
-        st.stop()
-
-
-def make_display_table(df: pd.DataFrame) -> pd.DataFrame:
-    """Round numeric columns for cleaner display and remove duplicate columns."""
-    result = df.copy()
-
-    # Prevent duplicate-column errors in pandas/Streamlit display
-    result = result.loc[:, ~result.columns.duplicated()].copy()
-
-    for col in result.columns:
-        if pd.api.types.is_numeric_dtype(result[col]):
-            result[col] = result[col].round(4)
-
-    return result
-
-
-def get_available_column(df: pd.DataFrame, candidates: list[str]) -> str | None:
-    """Return the first available column from a candidate list."""
-    for col in candidates:
-        if col in df.columns:
-            return col
-
-    return None
-
-
-def show_unavailable_metric(column_name: str):
-    """Show metric placeholder when a required column is unavailable."""
-    st.metric(column_name, "Not Available", "Check output file")
-
-
-# --------------------------------------------------
-# Load main data
-# --------------------------------------------------
-
-try:
-    stock_data = load_csv(STOCK_WEEKLY_PATH)
-except FileNotFoundError:
-    st.error(
-        "Weekly stock data not found. Run:\n\n"
-        "`python -m src.data_loader`\n\n"
-        "`python -m src.preprocessing`"
-    )
-    st.stop()
-
-
-risk_metrics = load_optional_csv(RISK_METRICS_PATH)
-risk_scores = load_optional_csv(RISK_SCORES_PATH)
-
-stock_data = add_normalized_price(stock_data)
-
-all_tickers = sorted(stock_data["Ticker"].unique())
-bank_tickers = [ticker for ticker in all_tickers if ticker != "XU100.IS"]
-
-
-# --------------------------------------------------
-# Sidebar
-# --------------------------------------------------
-
-st.sidebar.title("BIST Banking Analytics")
-
-page = st.sidebar.selectbox(
-    "Select Page",
-    [
-        "Market Overview",
-        "Stock Comparison",
-        "Risk Metrics",
-        "Risk Scores",
-        "Macro Sensitivity"
-    ]
-)
-
-st.sidebar.markdown("---")
-st.sidebar.caption("BIST Banking Analytics Dashboard")
-
-
-# --------------------------------------------------
-# Page 1: Market Overview
-# --------------------------------------------------
-
-if page == "Market Overview":
-    st.title("BIST Banking Analytics Dashboard")
-    st.caption(
-        "Weekly market performance, risk metrics and macro sensitivity analysis "
-        "for selected BIST banking stocks."
-    )
-
-    if risk_metrics is not None and not risk_metrics.empty:
-        bank_metrics = risk_metrics[risk_metrics["Ticker"] != "XU100.IS"].copy()
-
-        return_col = get_available_column(
-            bank_metrics,
-            ["annualized_return", "annual_return", "ann_return"]
-        )
-
-        volatility_col = get_available_column(
-            bank_metrics,
-            ["annualized_volatility", "annual_volatility", "ann_volatility"]
-        )
-
-        sharpe_col = get_available_column(
-            bank_metrics,
-            ["sharpe_ratio", "sharpe"]
-        )
-
-        beta_col = get_available_column(
-            bank_metrics,
-            ["beta", "market_beta", "beta_to_bist100", "bist100_beta", "benchmark_beta"]
-        )
-
-        col1, col2, col3, col4 = st.columns(4)
-
-        if return_col is not None:
-            highest_return = bank_metrics.loc[bank_metrics[return_col].idxmax()]
-            col1.metric(
-                "Highest Annualized Return",
-                highest_return["Ticker"],
-                format_percentage(highest_return[return_col])
-            )
-        else:
-            col1.metric("Highest Annualized Return", "Not Available", "Check risk metrics")
-
-        if volatility_col is not None:
-            highest_volatility = bank_metrics.loc[bank_metrics[volatility_col].idxmax()]
-            col2.metric(
-                "Highest Volatility",
-                highest_volatility["Ticker"],
-                format_percentage(highest_volatility[volatility_col])
-            )
-        else:
-            col2.metric("Highest Volatility", "Not Available", "Check risk metrics")
-
-        if sharpe_col is not None:
-            highest_sharpe = bank_metrics.loc[bank_metrics[sharpe_col].idxmax()]
-            col3.metric(
-                "Highest Sharpe Ratio",
-                highest_sharpe["Ticker"],
-                format_number(highest_sharpe[sharpe_col], 2)
-            )
-        else:
-            col3.metric("Highest Sharpe Ratio", "Not Available", "Check risk metrics")
-
-        if beta_col is not None:
-            highest_beta = bank_metrics.loc[bank_metrics[beta_col].idxmax()]
-            col4.metric(
-                "Highest Beta",
-                highest_beta["Ticker"],
-                format_number(highest_beta[beta_col], 2)
-            )
-        else:
-            col4.metric("Highest Beta", "Not Available", "Beta column missing")
-
-    else:
-        st.info(
-            "Risk metrics file is not available yet. Run `python -m src.export_outputs` "
-            "to show KPI cards."
-        )
-
-    st.subheader("Normalized Price Performance")
-
-    selected_tickers = st.multiselect(
-        "Select tickers",
-        options=all_tickers,
-        default=bank_tickers
-    )
-
-    filtered = stock_data[stock_data["Ticker"].isin(selected_tickers)].copy()
-
-    if filtered.empty:
-        st.warning("Please select at least one ticker.")
-        st.stop()
-
-    fig = px.line(
-        filtered,
-        x="Date",
-        y="normalized_price",
-        color="Ticker",
-        title="Normalized Price Index - Base 100"
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.subheader("Weekly Return Distribution")
-
-    return_data = filtered.dropna(subset=["weekly_return"]).copy()
-
-    fig_return = px.box(
-        return_data,
-        x="Ticker",
-        y="weekly_return",
-        title="Weekly Return Distribution by Ticker"
-    )
-
-    st.plotly_chart(fig_return, use_container_width=True)
-
-
-# --------------------------------------------------
-# Page 2: Stock Comparison
-# --------------------------------------------------
-
-elif page == "Stock Comparison":
-    st.title("Stock Comparison")
-
-    selected_tickers = st.multiselect(
-        "Select tickers to compare",
-        options=all_tickers,
-        default=bank_tickers[:3]
-    )
-
-    if not selected_tickers:
-        st.warning("Please select at least one ticker.")
-        st.stop()
-
-    filtered = stock_data[stock_data["Ticker"].isin(selected_tickers)].copy()
-
-    st.subheader("Normalized Price Comparison")
-
-    fig = px.line(
-        filtered,
-        x="Date",
-        y="normalized_price",
-        color="Ticker",
-        title="Normalized Price Index - Base 100"
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.subheader("Return Statistics")
-
-    summary = (
-        filtered
-        .groupby("Ticker")
-        .agg(
-            start_date=("Date", "min"),
-            end_date=("Date", "max"),
-            mean_weekly_return=("weekly_return", "mean"),
-            weekly_volatility=("weekly_return", "std"),
-            observations=("weekly_return", "count")
-        )
+    warning_counts = (
+        pd.Series(warning_items)
+        .value_counts()
         .reset_index()
     )
 
-    st.dataframe(
-        make_display_table(summary),
-        use_container_width=True,
-        hide_index=True
+    warning_counts.columns = ["diagnostic_warning", "count"]
+
+    return warning_counts
+
+
+def create_cumulative_return_table(stock_weekly: pd.DataFrame) -> pd.DataFrame:
+    if stock_weekly.empty or "weekly_return" not in stock_weekly.columns:
+        return pd.DataFrame()
+
+    df = stock_weekly[["Date", "Ticker", "weekly_return"]].copy()
+    df = df.dropna(subset=["Date", "Ticker", "weekly_return"])
+
+    returns = df.pivot_table(
+        index="Date",
+        columns="Ticker",
+        values="weekly_return",
+        aggfunc="mean"
+    ).sort_index()
+
+    cumulative = (1 + returns.fillna(0)).cumprod() - 1
+    cumulative = cumulative.reset_index()
+
+    return cumulative
+
+
+def page_market_overview():
+    st.title("Market Overview")
+
+    stock_weekly = load_csv(PATHS["stock_weekly"], parse_dates=["Date"])
+    risk_metrics = load_csv(PATHS["risk_metrics"])
+
+    if stock_weekly.empty:
+        show_missing_file_warning(
+            PATHS["stock_weekly"],
+            "python -m src.data_loader\npython -m src.preprocessing"
+        )
+        return
+
+    st.markdown(
+        """
+        This page provides a general overview of selected BIST banking stocks and the BIST 100 benchmark.
+        """
     )
 
+    tickers = sorted(stock_weekly["Ticker"].dropna().unique().tolist())
 
-# --------------------------------------------------
-# Page 3: Risk Metrics
-# --------------------------------------------------
+    selected_tickers = st.multiselect(
+        "Select tickers",
+        options=tickers,
+        default=tickers
+    )
 
-elif page == "Risk Metrics":
+    filtered = stock_weekly[stock_weekly["Ticker"].isin(selected_tickers)].copy()
+
+    cumulative = create_cumulative_return_table(filtered)
+
+    if not cumulative.empty:
+        cumulative_long = cumulative.melt(
+            id_vars="Date",
+            var_name="Ticker",
+            value_name="Cumulative Return"
+        )
+
+        fig = px.line(
+            cumulative_long,
+            x="Date",
+            y="Cumulative Return",
+            color="Ticker",
+            title="Cumulative Weekly Return"
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("Latest Weekly Data")
+
+    display_cols = get_available_columns(
+        filtered,
+        ["Date", "Ticker", "Open", "High", "Low", "Close", "Adj_Close", "Volume", "weekly_return"]
+    )
+
+    st.dataframe(
+        filtered[display_cols].sort_values(["Date", "Ticker"], ascending=[False, True]).head(50),
+        use_container_width=True
+    )
+
+    if not risk_metrics.empty:
+        st.subheader("Risk Metrics Snapshot")
+
+        st.dataframe(risk_metrics, use_container_width=True)
+
+
+def page_stock_comparison():
+    st.title("Stock Comparison")
+
+    stock_weekly = load_csv(PATHS["stock_weekly"], parse_dates=["Date"])
+
+    if stock_weekly.empty:
+        show_missing_file_warning(
+            PATHS["stock_weekly"],
+            "python -m src.data_loader\npython -m src.preprocessing"
+        )
+        return
+
+    tickers = sorted(stock_weekly["Ticker"].dropna().unique().tolist())
+
+    selected_tickers = st.multiselect(
+        "Select stocks to compare",
+        options=tickers,
+        default=[ticker for ticker in tickers if ticker != "XU100.IS"][:4]
+    )
+
+    filtered = stock_weekly[stock_weekly["Ticker"].isin(selected_tickers)].copy()
+
+    metric_options = get_available_columns(
+        filtered,
+        ["Close", "Adj_Close", "weekly_return", "Volume"]
+    )
+
+    selected_metric = st.selectbox(
+        "Select comparison metric",
+        options=metric_options
+    )
+
+    fig = px.line(
+        filtered,
+        x="Date",
+        y=selected_metric,
+        color="Ticker",
+        title=f"{selected_metric} Comparison"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    cumulative = create_cumulative_return_table(filtered)
+
+    if not cumulative.empty:
+        cumulative_long = cumulative.melt(
+            id_vars="Date",
+            var_name="Ticker",
+            value_name="Cumulative Return"
+        )
+
+        fig_cum = px.line(
+            cumulative_long,
+            x="Date",
+            y="Cumulative Return",
+            color="Ticker",
+            title="Cumulative Return Comparison"
+        )
+
+        st.plotly_chart(fig_cum, use_container_width=True)
+
+
+def page_risk_metrics():
     st.title("Risk Metrics")
 
-    display_missing_file_warning(
-        files=[RISK_METRICS_PATH],
-        command="python -m src.export_outputs"
+    risk_metrics = load_csv(PATHS["risk_metrics"])
+
+    if risk_metrics.empty:
+        show_missing_file_warning(
+            PATHS["risk_metrics"],
+            "python -m src.export_outputs"
+        )
+        return
+
+    st.markdown(
+        """
+        This page presents risk and performance metrics for selected BIST banking stocks.
+        """
     )
 
-    risk_metrics = load_csv(RISK_METRICS_PATH)
+    st.dataframe(risk_metrics, use_container_width=True)
 
-    bank_metrics = risk_metrics[risk_metrics["Ticker"] != "XU100.IS"].copy()
-
-    st.subheader("Risk Metrics Table")
-
-    st.dataframe(
-        make_display_table(bank_metrics),
-        use_container_width=True,
-        hide_index=True
+    chart_cols = get_available_columns(
+        risk_metrics,
+        [
+            "annualized_return",
+            "annualized_volatility",
+            "max_drawdown",
+            "sharpe_ratio",
+            "beta"
+        ]
     )
 
-    volatility_col = get_available_column(
-        bank_metrics,
-        ["annualized_volatility", "annual_volatility", "ann_volatility"]
-    )
+    if chart_cols:
+        selected_metric = st.selectbox(
+            "Select risk metric",
+            options=chart_cols
+        )
 
-    drawdown_col = get_available_column(
-        bank_metrics,
-        ["max_drawdown", "maximum_drawdown", "drawdown"]
-    )
-
-    beta_col = get_available_column(
-        bank_metrics,
-        ["beta", "market_beta", "beta_to_bist100", "bist100_beta", "benchmark_beta"]
-    )
-
-    if volatility_col is not None:
-        st.subheader("Annualized Volatility")
-
-        fig_vol = px.bar(
-            bank_metrics.sort_values(volatility_col, ascending=False),
+        fig = px.bar(
+            risk_metrics.sort_values(selected_metric),
             x="Ticker",
-            y=volatility_col,
-            title="Annualized Volatility by Ticker"
+            y=selected_metric,
+            title=f"{selected_metric} by Ticker"
         )
 
-        st.plotly_chart(fig_vol, use_container_width=True)
-    else:
-        st.info("Annualized volatility column was not found in risk_metrics.csv.")
-
-    if drawdown_col is not None:
-        st.subheader("Maximum Drawdown")
-
-        fig_dd = px.bar(
-            bank_metrics.sort_values(drawdown_col),
-            x="Ticker",
-            y=drawdown_col,
-            title="Maximum Drawdown by Ticker"
-        )
-
-        st.plotly_chart(fig_dd, use_container_width=True)
-    else:
-        st.info("Maximum drawdown column was not found in risk_metrics.csv.")
-
-    st.subheader("Beta to BIST 100")
-
-    if beta_col is not None:
-        fig_beta = px.bar(
-            bank_metrics.sort_values(beta_col, ascending=False),
-            x="Ticker",
-            y=beta_col,
-            title="Beta to BIST 100"
-        )
-
-        st.plotly_chart(fig_beta, use_container_width=True)
-    else:
-        st.info(
-            "Beta column was not found in risk_metrics.csv. "
-            "The dashboard will continue without the beta chart. "
-            "To restore beta analysis, check `src/risk_metrics.py` and run "
-            "`python -m src.export_outputs` again."
-        )
+        st.plotly_chart(fig, use_container_width=True)
 
 
-# --------------------------------------------------
-# Page 4: Risk Scores
-# --------------------------------------------------
-
-elif page == "Risk Scores":
+def page_risk_scores():
     st.title("Risk Scores")
 
-    display_missing_file_warning(
-        files=[RISK_SCORES_PATH],
-        command="python -m src.export_outputs"
+    risk_scores = load_csv(PATHS["risk_scores"])
+
+    if risk_scores.empty:
+        show_missing_file_warning(
+            PATHS["risk_scores"],
+            "python -m src.export_outputs"
+        )
+        return
+
+    st.markdown(
+        """
+        This page presents composite risk and performance scores.
+        """
     )
 
-    risk_scores = load_csv(RISK_SCORES_PATH)
+    st.dataframe(risk_scores, use_container_width=True)
 
-    bank_scores = risk_scores[risk_scores["Ticker"] != "XU100.IS"].copy()
-
-    st.subheader("Risk and Performance Score Table")
-
-    st.dataframe(
-        make_display_table(bank_scores),
-        use_container_width=True,
-        hide_index=True
-    )
-
-    if "risk_score" in bank_scores.columns:
-        st.subheader("Risk Score")
+    if "risk_score" in risk_scores.columns:
+        color_col = "risk_category" if "risk_category" in risk_scores.columns else None
 
         fig_risk = px.bar(
-            bank_scores.sort_values("risk_score", ascending=False),
+            risk_scores.sort_values("risk_score", ascending=False),
             x="Ticker",
             y="risk_score",
-            color="risk_category" if "risk_category" in bank_scores.columns else None,
+            color=color_col,
             title="Risk Score by Ticker"
         )
 
         st.plotly_chart(fig_risk, use_container_width=True)
-    else:
-        st.info("risk_score column was not found in risk_scores.csv.")
 
-    if "performance_score" in bank_scores.columns:
-        st.subheader("Performance Score")
-
+    if "performance_score" in risk_scores.columns:
         fig_perf = px.bar(
-            bank_scores.sort_values("performance_score", ascending=False),
+            risk_scores.sort_values("performance_score", ascending=False),
             x="Ticker",
             y="performance_score",
             title="Performance Score by Ticker"
         )
 
         st.plotly_chart(fig_perf, use_container_width=True)
-    else:
-        st.info("performance_score column was not found in risk_scores.csv.")
 
 
-# --------------------------------------------------
-# Page 5: Macro Sensitivity
-# --------------------------------------------------
+def page_macro_sensitivity():
+    st.title("Macro Sensitivity")
 
-elif page == "Macro Sensitivity":
-    st.title("Macro Sensitivity Analysis")
+    correlation = load_csv(PATHS["macro_correlation"])
+    model_summary = load_csv(PATHS["macro_model_summary"])
 
-    st.caption(
-        "This page analyzes the statistical association between weekly banking stock returns "
-        "and macroeconomic variables. Results indicate sensitivity/association, not causality."
-    )
-
-    required_files = [
-        MACRO_CORR_PATH,
-        MACRO_MODEL_SUMMARY_PATH,
-        FUNDING_SUMMARY_PATH,
-        CORE_USD_PATH,
-        CORE_EUR_PATH,
-        FUNDING_LEVEL_PATH,
-        FUNDING_CHANGE_PATH
-    ]
-
-    missing_files = [path.name for path in required_files if not path.exists()]
-
-    if missing_files:
-        st.warning(
-            "Macro analysis output files are missing. Run the following commands:\n\n"
-            "`python -m src.macro_loader`\n\n"
-            "`python -m src.merge_macro`\n\n"
-            "`python -m src.macro_analysis`\n\n"
-            f"Missing files: {missing_files}"
+    if correlation.empty:
+        show_missing_file_warning(
+            PATHS["macro_correlation"],
+            "python -m src.macro_loader\npython -m src.merge_macro\npython -m src.macro_analysis"
         )
-        st.stop()
-
-    corr = load_csv(MACRO_CORR_PATH)
-    model_summary = load_csv(MACRO_MODEL_SUMMARY_PATH)
-    funding_summary = load_csv(FUNDING_SUMMARY_PATH)
-
-    core_usd = load_csv(CORE_USD_PATH)
-    core_eur = load_csv(CORE_EUR_PATH)
-    funding_level = load_csv(FUNDING_LEVEL_PATH)
-    funding_change = load_csv(FUNDING_CHANGE_PATH)
-
-    bank_corr = corr[corr["Ticker"] != "XU100.IS"].copy()
-
-    st.subheader("Model Specifications")
-
-    st.dataframe(
-        make_display_table(model_summary),
-        use_container_width=True,
-        hide_index=True
-    )
-
-    st.subheader("Funding Cost Change Summary")
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    total_weeks = int(funding_summary.loc[0, "total_weeks"])
-    change_weeks = int(funding_summary.loc[0, "funding_cost_change_weeks"])
-    no_change_weeks = int(funding_summary.loc[0, "no_change_weeks"])
-    change_ratio = funding_summary.loc[0, "funding_cost_change_week_ratio"]
-
-    col1.metric("Total Weeks", total_weeks)
-    col2.metric("Change Weeks", change_weeks)
-    col3.metric("No Change Weeks", no_change_weeks)
-    col4.metric("Change Ratio", f"{change_ratio:.1%}")
-
-    st.info(
-        "Funding cost refers to CBRT weighted average funding cost, not the official one-week repo policy rate. "
-        "It is used as an operational monetary/funding condition indicator."
-    )
-
-    st.subheader("Macro Correlation Analysis")
-
-    selected_macro = st.selectbox(
-        "Select macro variable",
-        options=sorted(bank_corr["macro_variable"].unique())
-    )
-
-    selected_corr = (
-        bank_corr[bank_corr["macro_variable"] == selected_macro]
-        .sort_values("correlation")
-        .copy()
-    )
-
-    fig_corr = px.bar(
-        selected_corr,
-        x="Ticker",
-        y="correlation",
-        title=f"Correlation Between Weekly Returns and {selected_macro}"
-    )
-
-    st.plotly_chart(fig_corr, use_container_width=True)
-
-    st.dataframe(
-        make_display_table(selected_corr),
-        use_container_width=True,
-        hide_index=True
-    )
-
-    st.subheader("Regression Results")
-
-    regression_choice = st.selectbox(
-        "Select regression model",
-        options=[
-            "Core USD Model",
-            "Core EUR Model",
-            "Funding Cost Level Model",
-            "Funding Cost Change Model"
-        ]
-    )
-
-    if regression_choice == "Core USD Model":
-        selected_reg = core_usd.copy()
-        explanation = (
-            "Core USD Model uses USD/TRY weekly change and CPI YoY change. "
-            "It measures basic exchange-rate and inflation-regime sensitivity."
-        )
-
-    elif regression_choice == "Core EUR Model":
-        selected_reg = core_eur.copy()
-        explanation = (
-            "Core EUR Model uses EUR/TRY weekly change and CPI YoY change. "
-            "It is an alternative exchange-rate sensitivity specification."
-        )
-
-    elif regression_choice == "Funding Cost Level Model":
-        selected_reg = funding_level.copy()
-        explanation = (
-            "Funding Cost Level Model uses USD/TRY weekly change, CPI YoY change "
-            "and CBRT weighted average funding cost level. Funding cost level is interpreted "
-            "as the prevailing monetary/funding environment."
-        )
-
-    else:
-        selected_reg = funding_change.copy()
-        explanation = (
-            "Funding Cost Change Model uses USD/TRY weekly change, CPI YoY change "
-            "and weekly changes in CBRT weighted average funding cost. This captures short-term "
-            "changes in funding conditions."
-        )
-
-    st.caption(explanation)
-
-    base_display_cols = [
-        "model_name",
-        "Ticker",
-        "observations",
-        "r_squared",
-        "adj_r_squared",
-        "f_pvalue"
-    ]
-
-    coefficient_cols = [
-        col for col in selected_reg.columns
-        if (col.endswith("_coef") or col.endswith("_pvalue"))
-        and col not in base_display_cols
-    ]
-
-    display_cols = [
-        col for col in base_display_cols
-        if col in selected_reg.columns
-    ]
-
-    display_cols = display_cols + coefficient_cols
-
-    # Remove duplicate columns while preserving order
-    display_cols = list(dict.fromkeys(display_cols))
-
-    selected_reg_display = selected_reg.loc[:, display_cols].copy()
-
-    st.dataframe(
-        make_display_table(selected_reg_display),
-        use_container_width=True,
-        hide_index=True
-    )
-
-    st.subheader("Interpretation Guide")
+        return
 
     st.markdown(
         """
-        - Negative exchange-rate coefficients suggest that banking stock returns tended to weaken during weeks of TRY depreciation.
-        - CPI YoY change represents the inflation regime rather than a weekly inflation shock.
-        - Funding cost level represents the monetary/funding environment.
-        - Funding cost weekly difference represents short-term changes in funding conditions.
-        - High p-values indicate weak statistical evidence in the selected model.
-        - These results should not be interpreted as causal effects.
+        This page presents macro correlation and OLS macro regression results.
         """
     )
+
+    st.subheader("Macro Correlation Results")
+
+    tickers = sorted(correlation["Ticker"].dropna().unique().tolist())
+    macro_vars = sorted(correlation["macro_variable"].dropna().unique().tolist())
+
+    selected_tickers = st.multiselect(
+        "Select tickers",
+        options=tickers,
+        default=tickers
+    )
+
+    selected_macro_vars = st.multiselect(
+        "Select macro variables",
+        options=macro_vars,
+        default=macro_vars
+    )
+
+    corr_filtered = correlation[
+        correlation["Ticker"].isin(selected_tickers)
+        & correlation["macro_variable"].isin(selected_macro_vars)
+    ].copy()
+
+    if not corr_filtered.empty:
+        fig_corr = px.bar(
+            corr_filtered,
+            x="Ticker",
+            y="correlation",
+            color="macro_variable",
+            barmode="group",
+            title="Correlation Between Weekly Returns and Macro Variables"
+        )
+
+        st.plotly_chart(fig_corr, use_container_width=True)
+
+        st.dataframe(corr_filtered, use_container_width=True)
+
+    st.subheader("Macro Model Specifications")
+
+    if not model_summary.empty:
+        st.dataframe(model_summary, use_container_width=True)
+
+    st.subheader("OLS Regression Results")
+
+    available_models = [
+        model_name for model_name, path in REGRESSION_FILE_MAP.items()
+        if file_is_available(path)
+    ]
+
+    if not available_models:
+        st.warning("No OLS regression output files found.")
+        return
+
+    selected_model = st.selectbox(
+        "Select OLS model",
+        options=available_models
+    )
+
+    regression_df = load_csv(REGRESSION_FILE_MAP[selected_model])
+
+    if regression_df.empty:
+        st.warning("Selected regression result file could not be loaded.")
+        return
+
+    st.dataframe(regression_df, use_container_width=True)
+
+    coefficient_cols = [
+        col for col in regression_df.columns
+        if col.endswith("_coef") and not col.startswith("const")
+    ]
+
+    coefficient_rows = []
+
+    for _, row in regression_df.iterrows():
+        for coef_col in coefficient_cols:
+            variable = coef_col.replace("_coef", "")
+            pvalue_col = f"{variable}_pvalue"
+
+            coefficient_rows.append(
+                {
+                    "Ticker": row.get("Ticker"),
+                    "variable": variable,
+                    "coefficient": row.get(coef_col),
+                    "pvalue": row.get(pvalue_col)
+                }
+            )
+
+    coef_df = pd.DataFrame(coefficient_rows)
+
+    if not coef_df.empty:
+        fig_coef = px.bar(
+            coef_df,
+            x="Ticker",
+            y="coefficient",
+            color="variable",
+            barmode="group",
+            title=f"OLS Coefficients - {selected_model}"
+        )
+
+        st.plotly_chart(fig_coef, use_container_width=True)
+
+        st.dataframe(coef_df, use_container_width=True)
+
+
+def page_model_diagnostics():
+    st.title("Model Diagnostics")
+
+    diagnostics = load_csv(PATHS["macro_model_diagnostics"])
+    vif_results = load_csv(PATHS["macro_vif_results"])
+
+    if diagnostics.empty:
+        show_missing_file_warning(
+            PATHS["macro_model_diagnostics"],
+            "python -m src.model_diagnostics"
+        )
+        return
+
+    st.markdown(
+        """
+        This page evaluates macro regression models using diagnostic tests such as
+        adjusted R-squared, F-test p-values, Durbin-Watson, Breusch-Pagan,
+        Jarque-Bera and VIF.
+        """
+    )
+
+    models = sorted(diagnostics["model_name"].dropna().unique().tolist())
+    tickers = sorted(diagnostics["Ticker"].dropna().unique().tolist())
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        selected_models = st.multiselect(
+            "Select models",
+            options=models,
+            default=models
+        )
+
+    with col2:
+        selected_tickers = st.multiselect(
+            "Select tickers",
+            options=tickers,
+            default=tickers
+        )
+
+    filtered = diagnostics[
+        diagnostics["model_name"].isin(selected_models)
+        & diagnostics["Ticker"].isin(selected_tickers)
+    ].copy()
+
+    if filtered.empty:
+        st.warning("No diagnostic results found for the selected filters.")
+        return
+
+    avg_adj_r2 = filtered["adj_r_squared"].mean() if "adj_r_squared" in filtered.columns else np.nan
+    max_vif = filtered["max_vif"].max() if "max_vif" in filtered.columns else np.nan
+
+    warning_count = 0
+
+    if "diagnostic_warnings" in filtered.columns:
+        warning_count = filtered[
+            filtered["diagnostic_warnings"].fillna("") != "no_major_warning"
+        ].shape[0]
+
+    kpi1, kpi2, kpi3 = st.columns(3)
+
+    with kpi1:
+        st.metric("Average Adjusted R²", format_decimal(avg_adj_r2))
+
+    with kpi2:
+        st.metric("Maximum VIF", format_decimal(max_vif))
+
+    with kpi3:
+        st.metric("Models with Warnings", warning_count)
+
+    st.subheader("Adjusted R-squared by Model and Ticker")
+
+    if "adj_r_squared" in filtered.columns:
+        fig_adj = px.bar(
+            filtered,
+            x="Ticker",
+            y="adj_r_squared",
+            color="model_name",
+            barmode="group",
+            title="Adjusted R-squared"
+        )
+
+        st.plotly_chart(fig_adj, use_container_width=True)
+
+    st.subheader("Durbin-Watson Statistics")
+
+    if "durbin_watson" in filtered.columns:
+        fig_dw = px.bar(
+            filtered,
+            x="Ticker",
+            y="durbin_watson",
+            color="model_name",
+            barmode="group",
+            title="Durbin-Watson by Model"
+        )
+
+        st.plotly_chart(fig_dw, use_container_width=True)
+
+    st.subheader("Diagnostic Warning Summary")
+
+    if "diagnostic_warnings" in filtered.columns:
+        warning_df = filtered.copy()
+        warning_df["diagnostic_warnings"] = warning_df["diagnostic_warnings"].apply(clean_warning_text)
+
+        warning_counts = split_diagnostic_warnings(warning_df["diagnostic_warnings"])
+
+        if not warning_counts.empty:
+            fig_warn = px.bar(
+                warning_counts,
+                x="diagnostic_warning",
+                y="count",
+                title="Diagnostic Warning Counts"
+            )
+
+            st.plotly_chart(fig_warn, use_container_width=True)
+
+            st.dataframe(warning_counts, use_container_width=True)
+        else:
+            st.info("No diagnostic warnings available.")
+
+    st.subheader("Diagnostics Table")
+
+    display_cols = get_available_columns(
+        filtered,
+        [
+            "model_name",
+            "Ticker",
+            "status",
+            "observations",
+            "r_squared",
+            "adj_r_squared",
+            "f_pvalue",
+            "f_test_interpretation",
+            "durbin_watson",
+            "durbin_watson_interpretation",
+            "breusch_pagan_pvalue",
+            "breusch_pagan_interpretation",
+            "jarque_bera_pvalue",
+            "jarque_bera_interpretation",
+            "max_vif",
+            "mean_vif",
+            "diagnostic_warnings"
+        ]
+    )
+
+    st.dataframe(filtered[display_cols], use_container_width=True)
+
+    st.subheader("VIF Results")
+
+    if vif_results.empty:
+        show_missing_file_warning(
+            PATHS["macro_vif_results"],
+            "python -m src.model_diagnostics"
+        )
+    else:
+        vif_filtered = vif_results[
+            vif_results["model_name"].isin(selected_models)
+            & vif_results["Ticker"].isin(selected_tickers)
+        ].copy()
+
+        if not vif_filtered.empty:
+            vif_chart_df = (
+                vif_filtered
+                .groupby(["model_name", "variable"], as_index=False)
+                .agg(
+                    max_vif=("vif", "max"),
+                    mean_vif=("vif", "mean")
+                )
+            )
+
+            fig_vif = px.bar(
+                vif_chart_df,
+                x="variable",
+                y="max_vif",
+                color="model_name",
+                barmode="group",
+                title="Maximum VIF by Variable and Model"
+            )
+
+            st.plotly_chart(fig_vif, use_container_width=True)
+
+            st.markdown(
+                """
+                VIF values are aggregated using the maximum VIF across selected tickers.
+                This prevents repeated ticker-level VIF rows from being visually summed in the chart.
+                """
+            )
+
+            st.subheader("Aggregated VIF Table")
+
+            st.dataframe(vif_chart_df, use_container_width=True)
+
+            st.subheader("Ticker-level VIF Table")
+
+            st.dataframe(vif_filtered, use_container_width=True)
+
+
+def page_robust_results():
+    st.title("Robust Results")
+
+    robust_summary = load_csv(PATHS["robust_summary"])
+    robust_all = load_csv(PATHS["robust_all_models"])
+
+    if robust_summary.empty:
+        show_missing_file_warning(
+            PATHS["robust_summary"],
+            "python -m src.robust_macro_regression"
+        )
+        return
+
+    st.markdown(
+        """
+        This page presents macro regression results estimated with HC3 robust standard errors.
+        Robust standard errors improve inference when heteroskedasticity may be present.
+        """
+    )
+
+    models = sorted(robust_summary["model_name"].dropna().unique().tolist())
+    tickers = sorted(robust_summary["Ticker"].dropna().unique().tolist())
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        selected_models = st.multiselect(
+            "Select models",
+            options=models,
+            default=models
+        )
+
+    with col2:
+        selected_tickers = st.multiselect(
+            "Select tickers",
+            options=tickers,
+            default=tickers
+        )
+
+    filtered_summary = robust_summary[
+        robust_summary["model_name"].isin(selected_models)
+        & robust_summary["Ticker"].isin(selected_tickers)
+    ].copy()
+
+    if filtered_summary.empty:
+        st.warning("No robust regression results found for selected filters.")
+        return
+
+    st.subheader("Robust Inference Summary")
+
+    st.dataframe(filtered_summary, use_container_width=True)
+
+    st.subheader("Significant Variables at 5% Level")
+
+    if "significant_5pct_variables" in filtered_summary.columns:
+        sig5_counts = (
+            filtered_summary["significant_5pct_variables"]
+            .fillna("not_available")
+            .value_counts()
+            .reset_index()
+        )
+
+        sig5_counts.columns = ["significant_5pct_variables", "count"]
+
+        fig_sig5 = px.bar(
+            sig5_counts,
+            x="significant_5pct_variables",
+            y="count",
+            title="5% Robust Significance Summary"
+        )
+
+        st.plotly_chart(fig_sig5, use_container_width=True)
+
+    st.subheader("Strongest Variable by Absolute Robust t-value")
+
+    if "strongest_variable_by_abs_tvalue" in filtered_summary.columns:
+        strongest_counts = (
+            filtered_summary["strongest_variable_by_abs_tvalue"]
+            .fillna("not_available")
+            .value_counts()
+            .reset_index()
+        )
+
+        strongest_counts.columns = ["strongest_variable_by_abs_tvalue", "count"]
+
+        fig_strongest = px.bar(
+            strongest_counts,
+            x="strongest_variable_by_abs_tvalue",
+            y="count",
+            title="Most Frequent Strongest Variable"
+        )
+
+        st.plotly_chart(fig_strongest, use_container_width=True)
+
+    st.subheader("Detailed Robust Regression Results")
+
+    available_models = [
+        model_name for model_name, path in ROBUST_FILE_MAP.items()
+        if file_is_available(path)
+    ]
+
+    if not available_models:
+        st.warning("No detailed robust regression output files found.")
+        return
+
+    selected_model = st.selectbox(
+        "Select detailed robust model",
+        options=available_models
+    )
+
+    detailed = load_csv(ROBUST_FILE_MAP[selected_model])
+
+    if detailed.empty:
+        st.warning("Selected robust result file could not be loaded.")
+        return
+
+    detailed_tickers = sorted(detailed["Ticker"].dropna().unique().tolist())
+
+    selected_detail_tickers = st.multiselect(
+        "Select tickers for detailed robust output",
+        options=detailed_tickers,
+        default=detailed_tickers
+    )
+
+    detailed_filtered = detailed[detailed["Ticker"].isin(selected_detail_tickers)].copy()
+
+    st.dataframe(detailed_filtered, use_container_width=True)
+
+    variable_rows = []
+
+    coef_cols = [
+        col for col in detailed_filtered.columns
+        if col.endswith("_coef") and not col.startswith("const")
+    ]
+
+    for _, row in detailed_filtered.iterrows():
+        for coef_col in coef_cols:
+            variable = coef_col.replace("_coef", "")
+            robust_p_col = f"{variable}_robust_pvalue"
+            robust_t_col = f"{variable}_robust_tvalue"
+            robust_se_col = f"{variable}_robust_std_error"
+            ci_lower_col = f"{variable}_robust_ci_lower"
+            ci_upper_col = f"{variable}_robust_ci_upper"
+
+            variable_rows.append(
+                {
+                    "Ticker": row.get("Ticker"),
+                    "variable": variable,
+                    "coefficient": row.get(coef_col),
+                    "robust_std_error": row.get(robust_se_col),
+                    "robust_tvalue": row.get(robust_t_col),
+                    "robust_pvalue": row.get(robust_p_col),
+                    "robust_ci_lower": row.get(ci_lower_col),
+                    "robust_ci_upper": row.get(ci_upper_col)
+                }
+            )
+
+    robust_coef_df = pd.DataFrame(variable_rows)
+
+    if not robust_coef_df.empty:
+        fig_robust_coef = px.bar(
+            robust_coef_df,
+            x="Ticker",
+            y="coefficient",
+            color="variable",
+            barmode="group",
+            title=f"Robust Coefficients - {selected_model}"
+        )
+
+        st.plotly_chart(fig_robust_coef, use_container_width=True)
+
+        st.dataframe(robust_coef_df, use_container_width=True)
+
+
+def show_sidebar():
+    st.sidebar.title("BIST Banking Analytics")
+
+    pages = [
+        "Market Overview",
+        "Stock Comparison",
+        "Risk Metrics",
+        "Risk Scores",
+        "Macro Sensitivity",
+        "Model Diagnostics",
+        "Robust Results",
+    ]
+
+    selected_page = st.sidebar.radio("Navigation", pages)
+
+    st.sidebar.markdown("---")
+
+    st.sidebar.markdown(
+        """
+        **Project Scope**
+
+        BIST banking stock analytics with risk metrics, macro sensitivity analysis,
+        model diagnostics and robust inference.
+        """
+    )
+
+    return selected_page
+
+
+def main():
+    selected_page = show_sidebar()
+
+    if selected_page == "Market Overview":
+        page_market_overview()
+
+    elif selected_page == "Stock Comparison":
+        page_stock_comparison()
+
+    elif selected_page == "Risk Metrics":
+        page_risk_metrics()
+
+    elif selected_page == "Risk Scores":
+        page_risk_scores()
+
+    elif selected_page == "Macro Sensitivity":
+        page_macro_sensitivity()
+
+    elif selected_page == "Model Diagnostics":
+        page_model_diagnostics()
+
+    elif selected_page == "Robust Results":
+        page_robust_results()
+
+
+if __name__ == "__main__":
+    main()

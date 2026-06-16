@@ -1,116 +1,477 @@
 # Methodology
 
-## Frequency Choice
+This document explains the methodological framework used in the BIST Banking Analytics project.
 
-The project starts with weekly data because daily data can be noisy and macroeconomic variables are not always available at daily frequency.
+The project analyzes selected BIST banking stocks using weekly market data, financial risk metrics, macroeconomic indicators from TCMB EVDS and regression-based macro sensitivity models.
 
-## Return Calculation
+The results are designed for exploratory financial analysis, dashboard reporting and portfolio presentation. They should not be interpreted as investment advice or causal evidence.
 
-Simple returns are calculated as:
+## 1. Analytical Objective
+
+The main objective of this project is to build a structured analytics platform for selected BIST banking stocks.
+
+The methodology focuses on four main analytical layers:
+
+1. Market data collection and weekly return calculation
+2. Risk and performance metric calculation
+3. Risk and performance scoring
+4. Macroeconomic sensitivity analysis
+
+The project is designed to answer the following questions:
+
+* How did selected BIST banking stocks perform over time?
+* Which stocks show higher volatility and drawdown risk?
+* Which stocks show stronger risk-adjusted performance?
+* How are weekly banking stock returns statistically associated with macroeconomic variables?
+* How can market, risk and macro indicators be presented in an interactive dashboard?
+
+## 2. Stock Market Data Methodology
+
+Historical stock market data is downloaded from Yahoo Finance using the `yfinance` Python package.
+
+The selected stock universe includes:
+
+* AKBNK.IS
+* GARAN.IS
+* HALKB.IS
+* ISCTR.IS
+* VAKBN.IS
+* YKBNK.IS
+
+The BIST 100 index is used as a benchmark:
+
+* XU100.IS
+
+The raw data includes open, high, low, close, adjusted close and volume fields.
+
+## 3. Weekly Frequency Transformation
+
+The project uses weekly frequency for the main analysis.
+
+The weekly transformation is applied because:
+
+* It reduces short-term daily noise.
+* It creates a cleaner time-series structure for comparative analysis.
+* It aligns stock market data with lower-frequency macroeconomic indicators.
+* It is suitable for medium-term risk and macro sensitivity analysis.
+
+Weekly data is created using week-ending observations.
+
+For each ticker:
+
+* Weekly open is based on the first available opening price of the week.
+* Weekly high is the maximum price of the week.
+* Weekly low is the minimum price of the week.
+* Weekly close is the last available closing price of the week.
+* Weekly adjusted close is the last available adjusted closing price of the week.
+* Weekly volume is the total trading volume of the week.
+
+## 4. Weekly Return Calculation
+
+Weekly returns are calculated using the adjusted close price where available. If adjusted close is unavailable, close price is used.
+
+The general return formula is:
 
 ```text
-Return_t = Price_t / Price_{t-1} - 1
+weekly_return = current_week_price / previous_week_price - 1
 ```
 
-## Risk Metrics
+The first weekly return observation for each ticker is missing because there is no previous week for comparison.
 
-Main risk metrics:
+Weekly returns are used as the dependent variable in the macro sensitivity models.
 
-- Volatility
-- Maximum drawdown
-- Beta against BIST 100
-- Sharpe ratio
+## 5. Risk Metrics Methodology
 
-## Risk Score
+The project calculates several risk and performance metrics for each ticker.
 
-The first version of the risk score uses:
+### 5.1 Mean Weekly Return
 
-| Component | Weight |
-|---|---:|
-| Annualized volatility | 40% |
-| Absolute maximum drawdown | 35% |
-| Absolute beta | 25% |
+Mean weekly return measures the average weekly return over the sample period.
 
-Higher score means higher historical risk.
+### 5.2 Annualized Return
 
-## Performance Score
+Annualized return converts weekly return performance into an annualized measure.
 
-The first version of the performance score uses:
+The project assumes approximately 52 weeks in a year.
 
-| Component | Weight |
-|---|---:|
-| Annualized return | 40% |
-| Sharpe ratio | 40% |
-| Drawdown resilience | 20% |
+### 5.3 Weekly Volatility
 
-Higher score means stronger historical risk-adjusted profile.
+Weekly volatility is calculated as the standard deviation of weekly returns.
 
-## Important Limitation
+It measures how much weekly returns fluctuate around their average.
 
-This scoring system is not investment advice. It is a transparent analytical framework for comparing historical risk and performance.
+### 5.4 Annualized Volatility
 
-## Current Scoring Framework
+Annualized volatility converts weekly volatility into an annualized risk measure.
 
-The current scoring framework is intentionally transparent and rule-based.
+The general formula is:
 
-### Risk Score
+```text
+annualized_volatility = weekly_volatility × sqrt(52)
+```
 
-The risk score is calculated using:
+### 5.5 Maximum Drawdown
 
-| Component | Weight |
-|---|---:|
-| Annualized volatility | 40% |
-| Absolute maximum drawdown | 35% |
-| Absolute beta to BIST 100 | 25% |
+Maximum drawdown measures the largest historical decline from a previous peak to a trough.
 
-Higher risk score means higher historical risk.
+It is used to evaluate downside risk.
 
-### Performance Score
+A larger negative drawdown indicates that the stock experienced a deeper historical decline.
 
-The performance score is calculated using:
+### 5.6 Sharpe Ratio
 
-| Component | Weight |
-|---|---:|
-| Annualized return | 40% |
-| Sharpe ratio | 40% |
-| Drawdown resilience | 20% |
+Sharpe ratio is used as a risk-adjusted performance measure.
 
-Higher performance score means stronger historical risk-adjusted performance.
+It evaluates how much return is generated per unit of volatility.
 
-## Why Weekly Frequency?
+A higher Sharpe ratio indicates stronger risk-adjusted performance.
 
-Weekly frequency is preferred in the first version because:
+## 6. Risk Scoring Methodology
 
-- Daily financial data can be noisy.
-- Weekly data better supports medium-term risk analysis.
-- It will be easier to merge with macroeconomic variables in later phases.
-- It reduces short-term market microstructure noise.
+The project creates a comparative risk scoring framework for selected banking stocks.
 
-## Main Limitations
+The risk score combines selected risk indicators into a single score.
 
-The current version has several limitations:
+The scoring framework is designed to make cross-stock comparison easier.
 
-1. It only uses historical price data.
-2. It does not yet include macroeconomic variables.
-3. It does not yet include KAP disclosures or financial statement data.
-4. The scoring system is rule-based and should be interpreted as an analytical comparison tool.
-5. The project does not provide investment advice.
+Risk score components may include:
 
-## Macro Sensitivity Methodology
+* Annualized volatility
+* Maximum drawdown
+* Benchmark sensitivity metrics where available
 
-The macroeconomic dataset includes USD/TRY, EUR/TRY, CPI index and CBRT weighted average funding cost variables obtained from TCMB EVDS.
+Performance score components may include:
 
-All variables are aligned to weekly frequency in order to match weekly stock returns. Exchange rates and the weighted average funding cost are converted to weekly observations using the last available value of each week. CPI is a monthly variable and is forward-filled to weekly frequency because the most recently announced CPI value remains the latest available inflation information until the next monthly release.
+* Annualized return
+* Sharpe ratio
+* Drawdown resilience
 
-The macro sensitivity analysis is divided into separate model specifications:
+The scoring system is relative. This means that stocks are ranked and compared within the selected stock universe.
 
-1. Core USD Model: USD/TRY weekly change and CPI year-over-year change.
-2. Core EUR Model: EUR/TRY weekly change and CPI year-over-year change.
-3. Funding Cost Level Model: USD/TRY weekly change, CPI year-over-year change and CBRT weighted average funding cost level.
-4. Funding Cost Change Model: USD/TRY weekly change, CPI year-over-year change and weekly change in CBRT weighted average funding cost.
+A higher risk score indicates relatively higher risk compared to other stocks in the sample.
 
-The CBRT weighted average funding cost is not the official one-week repo policy rate. It is used as an operational monetary policy and funding condition indicator. Therefore, its level is interpreted as the prevailing funding cost environment, while its weekly difference is interpreted as short-term changes in funding conditions.
+A higher performance score indicates relatively stronger return and risk-adjusted performance.
 
-The results should be interpreted as statistical association and macro sensitivity, not as causal evidence.
+## 7. Macroeconomic Data Methodology
 
+Macroeconomic data is collected from TCMB EVDS.
 
+The project uses the following macroeconomic variables:
+
+| Variable                           | Description                             |
+| ---------------------------------- | --------------------------------------- |
+| USD/TRY                            | USD/TRY buying exchange rate            |
+| EUR/TRY                            | EUR/TRY buying exchange rate            |
+| CPI Index                          | Consumer Price Index                    |
+| CBRT Weighted Average Funding Cost | Operational funding condition indicator |
+
+The EVDS series are configured in:
+
+```text
+config/macro_series.json
+```
+
+Raw macroeconomic data is saved in long format and then transformed into weekly wide format.
+
+## 8. Macro Frequency Alignment
+
+The stock data is weekly. Therefore, macroeconomic variables are also aligned to weekly frequency.
+
+### 8.1 Exchange Rates
+
+USD/TRY and EUR/TRY are available at high frequency.
+
+They are converted to weekly frequency using the last available value of each week.
+
+Weekly percentage changes are calculated as:
+
+```text
+usd_try_weekly_change = usd_try / previous_week_usd_try - 1
+eur_try_weekly_change = eur_try / previous_week_eur_try - 1
+```
+
+### 8.2 CPI Index
+
+CPI is originally a monthly variable.
+
+To align CPI with weekly stock returns, CPI is forward-filled to weekly frequency. This means that the most recently announced CPI value remains the latest available inflation information until a new CPI value is released.
+
+The project calculates:
+
+```text
+cpi_index_weekly_change
+cpi_index_yoy_change
+```
+
+`cpi_index_yoy_change` is calculated using a 52-week lag after weekly alignment.
+
+CPI should be interpreted as an inflation environment or inflation regime indicator, not as a true weekly inflation shock.
+
+### 8.3 CBRT Weighted Average Funding Cost
+
+The funding cost variable represents the CBRT weighted average funding cost.
+
+It is not the official one-week repo policy rate.
+
+It is used as an operational monetary and funding condition indicator.
+
+The project uses two funding cost variables:
+
+```text
+funding_cost
+funding_cost_weekly_diff
+```
+
+`funding_cost` represents the prevailing funding cost environment.
+
+`funding_cost_weekly_diff` represents short-term weekly changes in funding conditions.
+
+## 9. Stock-Macro Dataset Merge
+
+The weekly stock dataset and weekly macroeconomic dataset are merged by date.
+
+The final merged dataset is:
+
+```text
+data/processed/stock_macro_weekly.csv
+```
+
+This dataset is used for macro correlation and regression analysis.
+
+Each row represents one ticker-week observation.
+
+## 10. Macro Correlation Analysis
+
+The macro correlation analysis calculates the Pearson correlation between weekly stock returns and selected macroeconomic variables.
+
+The correlation output includes:
+
+* Ticker
+* Macro variable
+* Correlation coefficient
+* Number of observations
+
+Correlation values are interpreted as follows:
+
+* Positive correlation means the stock return and macro variable tended to move in the same direction.
+* Negative correlation means the stock return and macro variable tended to move in opposite directions.
+* Correlation close to zero indicates weak linear association.
+
+Correlation does not imply causality.
+
+## 11. Macro Regression Methodology
+
+The macro sensitivity models use ordinary least squares regression.
+
+The dependent variable is:
+
+```text
+weekly_return
+```
+
+The independent variables differ by model specification.
+
+The general model form is:
+
+```text
+weekly_return = constant + macro_variables + error
+```
+
+The regression outputs include:
+
+* Coefficients
+* P-values
+* R-squared
+* Adjusted R-squared
+* F-test p-value
+* Number of observations
+
+The models are estimated separately for each banking stock.
+
+The BIST 100 benchmark is excluded from bank-level regression outputs.
+
+## 12. Macro Model Specifications
+
+The project uses four macro sensitivity model specifications.
+
+### 12.1 Core USD Model
+
+Variables:
+
+```text
+usd_try_weekly_change
+cpi_index_yoy_change
+```
+
+Purpose:
+
+This model evaluates the association between banking stock returns, USD/TRY weekly changes and the inflation regime.
+
+### 12.2 Core EUR Model
+
+Variables:
+
+```text
+eur_try_weekly_change
+cpi_index_yoy_change
+```
+
+Purpose:
+
+This model evaluates the association between banking stock returns, EUR/TRY weekly changes and the inflation regime.
+
+### 12.3 Funding Cost Level Model
+
+Variables:
+
+```text
+usd_try_weekly_change
+cpi_index_yoy_change
+funding_cost
+```
+
+Purpose:
+
+This model evaluates the association between banking stock returns and the prevailing funding cost environment.
+
+The funding cost level is interpreted as an operational monetary condition variable.
+
+### 12.4 Funding Cost Change Model
+
+Variables:
+
+```text
+usd_try_weekly_change
+cpi_index_yoy_change
+funding_cost_weekly_diff
+```
+
+Purpose:
+
+This model evaluates whether weekly changes in funding conditions are statistically associated with banking stock returns.
+
+This model should be interpreted as a short-term funding condition sensitivity model.
+
+## 13. Interpretation of Regression Results
+
+Regression coefficients indicate the direction and size of the statistical relationship between the dependent variable and the independent variables.
+
+General interpretation:
+
+* A negative coefficient indicates a negative statistical relationship.
+* A positive coefficient indicates a positive statistical relationship.
+* A lower p-value indicates stronger statistical evidence for the coefficient.
+* A higher p-value indicates weaker statistical evidence.
+
+R-squared measures the share of variation in weekly returns explained by the model.
+
+Adjusted R-squared adjusts R-squared for the number of explanatory variables.
+
+F-test p-value provides a general test of model significance.
+
+The regression results should be interpreted as statistical association and macro sensitivity, not causality.
+
+## 14. Methodological Limitations
+
+The project has several methodological limitations.
+
+### 14.1 No Causal Identification
+
+The models are exploratory and descriptive.
+
+They do not include a causal identification strategy.
+
+Therefore, the results cannot be interpreted as causal effects.
+
+### 14.2 Omitted Variables
+
+Weekly banking stock returns may be affected by many variables not included in the current models, such as:
+
+* Bank-specific financial statements
+* Regulatory announcements
+* Global risk appetite
+* CDS premiums
+* Domestic political events
+* Market liquidity
+* Earnings expectations
+* Sector-specific news
+
+### 14.3 Frequency Mismatch
+
+Some macroeconomic variables are not originally weekly.
+
+CPI is monthly and aligned to weekly frequency through forward filling.
+
+This creates a useful weekly analytical dataset but does not turn CPI into a true weekly variable.
+
+### 14.4 Multicollinearity Risk
+
+USD/TRY and EUR/TRY may be highly correlated.
+
+For this reason, the project uses separate Core USD and Core EUR model specifications.
+
+This reduces the risk of misleading coefficient interpretation caused by multicollinearity.
+
+### 14.5 Funding Cost Interpretation
+
+CBRT weighted average funding cost should not be interpreted as the official one-week repo policy rate.
+
+It is used as an operational funding condition indicator.
+
+### 14.6 Investment Advice Limitation
+
+The project is not designed to generate investment recommendations.
+
+The results are for educational, analytical and portfolio presentation purposes.
+
+## 15. Dashboard Methodology
+
+The Streamlit dashboard presents the project outputs in an interactive format.
+
+Dashboard pages include:
+
+* Market Overview
+* Stock Comparison
+* Risk Metrics
+* Risk Scores
+* Macro Sensitivity
+
+The dashboard does not calculate the full analysis from scratch. Instead, it reads processed datasets and output files generated by the project pipeline.
+
+This makes the dashboard faster and easier to use.
+
+## 16. Reproducibility
+
+The project is designed to be reproducible through modular Python scripts.
+
+The main execution order is:
+
+```bash
+python -m src.data_loader
+python -m src.preprocessing
+python -m src.export_outputs
+python -m src.macro_loader
+python -m src.merge_macro
+python -m src.macro_analysis
+streamlit run dashboard/app.py
+```
+
+The EVDS API key must be stored in a local `.env` file and should not be committed to GitHub.
+
+## 17. Overall Methodological Summary
+
+The methodology combines financial time-series processing, risk measurement, scoring, macroeconomic data integration and regression-based sensitivity analysis.
+
+The project provides a structured framework for analyzing BIST banking stocks using both market-based indicators and macroeconomic variables.
+
+The outputs should be interpreted as descriptive and exploratory evidence.
+
+They provide a foundation for future improvements such as:
+
+* Rolling-window analysis
+* Forecasting models
+* Model diagnostics
+* Multicollinearity checks
+* Residual analysis
+* Bank-level financial ratio integration
+* More advanced dashboard visualizations

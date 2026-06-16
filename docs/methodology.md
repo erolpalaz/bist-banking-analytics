@@ -371,11 +371,40 @@ F-test p-value provides a general test of model significance.
 
 The regression results should be interpreted as statistical association and macro sensitivity, not causality.
 
-## 14. Methodological Limitations
+## 14. Model Diagnostics and Robust Inference
+
+In addition to standard OLS regression outputs, the project applies basic diagnostic tests to evaluate the reliability of the macro sensitivity models.
+
+The diagnostic framework includes:
+
+| Diagnostic Test           | Purpose                                                                |
+| ------------------------- | ---------------------------------------------------------------------- |
+| Adjusted R-squared        | Measures explanatory power after adjusting for the number of variables |
+| F-test p-value            | Evaluates overall model significance                                   |
+| Durbin-Watson statistic   | Checks possible residual autocorrelation                               |
+| Breusch-Pagan test        | Checks possible heteroskedasticity                                     |
+| Jarque-Bera test          | Checks residual normality                                              |
+| Variance Inflation Factor | Checks multicollinearity among explanatory variables                   |
+
+The diagnostic results show that the macro sensitivity models have relatively low explanatory power. This is expected because weekly stock returns are affected by many factors beyond a limited set of macroeconomic variables.
+
+The VIF results do not indicate a multicollinearity concern. This supports the decision to estimate USD/TRY and EUR/TRY models separately.
+
+However, the Breusch-Pagan and Jarque-Bera results suggest that heteroskedasticity and non-normal residuals may be present in several model specifications. These issues are common in financial return data.
+
+For this reason, the project also estimates macro sensitivity models using HC3 robust standard errors.
+
+The robust regression framework keeps the OLS coefficient estimates but adjusts standard errors, t-statistics and p-values for heteroskedasticity concerns.
+
+The robust inference results are used to evaluate whether the statistical significance of macro variables remains stable after correcting standard errors.
+
+Overall, the robust results suggest that CPI year-over-year change is the most stable macro sensitivity indicator across banking stocks, while funding cost variables do not consistently appear as statistically significant short-term return drivers.
+
+## 15. Methodological Limitations
 
 The project has several methodological limitations.
 
-### 14.1 No Causal Identification
+### 15.1 No Causal Identification
 
 The models are exploratory and descriptive.
 
@@ -383,7 +412,7 @@ They do not include a causal identification strategy.
 
 Therefore, the results cannot be interpreted as causal effects.
 
-### 14.2 Omitted Variables
+### 15.2 Omitted Variables
 
 Weekly banking stock returns may be affected by many variables not included in the current models, such as:
 
@@ -396,7 +425,7 @@ Weekly banking stock returns may be affected by many variables not included in t
 * Earnings expectations
 * Sector-specific news
 
-### 14.3 Frequency Mismatch
+### 15.3 Frequency Mismatch
 
 Some macroeconomic variables are not originally weekly.
 
@@ -404,7 +433,7 @@ CPI is monthly and aligned to weekly frequency through forward filling.
 
 This creates a useful weekly analytical dataset but does not turn CPI into a true weekly variable.
 
-### 14.4 Multicollinearity Risk
+### 15.4 Multicollinearity Risk
 
 USD/TRY and EUR/TRY may be highly correlated.
 
@@ -412,19 +441,19 @@ For this reason, the project uses separate Core USD and Core EUR model specifica
 
 This reduces the risk of misleading coefficient interpretation caused by multicollinearity.
 
-### 14.5 Funding Cost Interpretation
+### 15.5 Funding Cost Interpretation
 
 CBRT weighted average funding cost should not be interpreted as the official one-week repo policy rate.
 
 It is used as an operational funding condition indicator.
 
-### 14.6 Investment Advice Limitation
+### 15.6 Investment Advice Limitation
 
 The project is not designed to generate investment recommendations.
 
 The results are for educational, analytical and portfolio presentation purposes.
 
-## 15. Dashboard Methodology
+## 16. Dashboard Methodology
 
 The Streamlit dashboard presents the project outputs in an interactive format.
 
@@ -440,7 +469,7 @@ The dashboard does not calculate the full analysis from scratch. Instead, it rea
 
 This makes the dashboard faster and easier to use.
 
-## 16. Reproducibility
+## 17. Reproducibility
 
 The project is designed to be reproducible through modular Python scripts.
 
@@ -453,14 +482,16 @@ python -m src.export_outputs
 python -m src.macro_loader
 python -m src.merge_macro
 python -m src.macro_analysis
+python -m src.model_diagnostics
+python -m src.robust_macro_regression
 streamlit run dashboard/app.py
 ```
 
 The EVDS API key must be stored in a local `.env` file and should not be committed to GitHub.
 
-## 17. Overall Methodological Summary
+## 18. Overall Methodological Summary
 
-The methodology combines financial time-series processing, risk measurement, scoring, macroeconomic data integration and regression-based sensitivity analysis.
+The methodology combines financial time-series processing, risk measurement, scoring, macroeconomic data integration, regression-based sensitivity analysis, model diagnostics and robust inference.
 
 The project provides a structured framework for analyzing BIST banking stocks using both market-based indicators and macroeconomic variables.
 
@@ -470,8 +501,7 @@ They provide a foundation for future improvements such as:
 
 * Rolling-window analysis
 * Forecasting models
-* Model diagnostics
-* Multicollinearity checks
-* Residual analysis
+* Extended model diagnostics
+* Residual visualization
 * Bank-level financial ratio integration
 * More advanced dashboard visualizations

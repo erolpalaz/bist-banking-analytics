@@ -2,99 +2,208 @@
 
 This document summarizes the initial analytical findings of the BIST Banking Analytics project.
 
-The analysis is based on weekly data for selected BIST banking stocks and macroeconomic indicators obtained from TCMB EVDS. The findings are descriptive and should not be interpreted as investment advice or causal evidence.
+The findings are based on weekly market data, risk metrics, macroeconomic indicators from TCMB EVDS, macro sensitivity regressions, model diagnostics and robust inference outputs.
+
+The results are exploratory and should not be interpreted as investment advice or causal evidence.
 
 ## 1. Market Performance Overview
 
-The weekly market analysis shows that selected BIST banking stocks exhibit different risk-return profiles over the sample period.
+The selected BIST banking stocks show different return and risk characteristics over the sample period.
 
-Based on the initial risk and performance outputs, GARAN.IS stands out as one of the strongest stocks in terms of annualized return and Sharpe ratio. This suggests that GARAN.IS provided a relatively better return per unit of risk compared to other banking stocks in the selected universe.
+The project analyzes the following banking stocks:
 
-VAKBN.IS shows a higher risk profile, mainly due to its relatively higher volatility and risk score. This indicates that VAKBN.IS experienced stronger price fluctuations compared to other banking stocks in the sample.
+* AKBNK.IS
+* GARAN.IS
+* HALKB.IS
+* ISCTR.IS
+* VAKBN.IS
+* YKBNK.IS
 
-The normalized price chart in the dashboard helps compare stock performance on a common base value of 100. This makes it easier to compare cumulative performance across stocks with different price levels.
+The BIST 100 index is used as the market benchmark:
+
+* XU100.IS
+
+The weekly stock dataset allows comparative analysis of cumulative performance, weekly return behavior, volatility and downside risk.
+
+Initial results suggest that selected banking stocks do not move identically over time. Some stocks display stronger cumulative performance, while others show higher volatility and deeper drawdown risk.
 
 ## 2. Risk Metrics Findings
 
-The risk metrics module evaluates each banking stock using return, volatility, drawdown and risk-adjusted performance indicators.
+The project calculates several risk and performance indicators for each stock.
 
-The key interpretation is that banking stocks do not carry the same level of risk even though they belong to the same sector. Some stocks show stronger return performance, while others show higher volatility and drawdown risk.
+The main risk and performance metrics include:
 
-Maximum drawdown is especially important because it measures the largest historical loss from a peak to a trough. A high drawdown indicates that the stock experienced a deeper loss during the sample period.
+* Mean weekly return
+* Annualized return
+* Weekly volatility
+* Annualized volatility
+* Maximum drawdown
+* Sharpe ratio
+* Number of observations
 
-Sharpe ratio is used to evaluate risk-adjusted performance. A higher Sharpe ratio indicates that the stock generated more return relative to its volatility.
+The risk metrics show that banking stocks differ meaningfully in their risk-return profiles.
+
+Higher annualized return does not always imply better risk-adjusted performance. Therefore, Sharpe ratio and maximum drawdown are important complementary indicators.
+
+Maximum drawdown is especially useful because it captures the largest historical decline from a previous peak. This helps evaluate downside risk more directly than volatility alone.
 
 ## 3. Risk Score Findings
 
-The risk scoring system provides a comparative ranking of banking stocks based on selected risk components.
+The project creates comparative risk and performance scores for selected banking stocks.
 
-The risk score combines multiple risk indicators into a single score. This makes it easier to compare stocks using a simplified risk classification framework.
+The risk score is designed to summarize relative risk across the selected stock universe.
 
-The initial dashboard results suggest that VAKBN.IS has one of the highest risk scores, while GARAN.IS has one of the lower risk scores among the selected banking stocks.
+The performance score is designed to summarize relative return and risk-adjusted performance.
 
-This result is consistent with the general interpretation that GARAN.IS shows a stronger risk-adjusted performance profile, while VAKBN.IS shows a more volatile risk profile.
+The scoring system is relative, meaning that each stock is evaluated in comparison with the other selected banking stocks.
+
+A higher risk score indicates relatively higher risk.
+
+A higher performance score indicates relatively stronger performance within the selected universe.
+
+These scores make the dashboard easier to interpret for non-technical users.
 
 ## 4. Macro Data Integration Findings
 
-The project successfully integrates macroeconomic data from TCMB EVDS and aligns it with weekly stock return data.
+The project integrates stock market data with macroeconomic data from TCMB EVDS.
 
-The macro variables used in the analysis are:
+The macroeconomic variables used in the project are:
 
 * USD/TRY buying exchange rate
 * EUR/TRY buying exchange rate
-* CPI index
+* Consumer Price Index
 * CBRT weighted average funding cost
 
-Exchange rates and funding cost data are transformed into weekly frequency using the last available observation of each week. CPI is a monthly variable and is forward-filled to weekly frequency.
+The stock data and macroeconomic data are aligned to weekly frequency.
 
-The final merged dataset includes stock market variables and macroeconomic indicators in a single weekly panel structure.
+The final merged dataset is:
 
-## 5. Macro Correlation Findings
-
-The macro correlation analysis shows the statistical association between weekly banking stock returns and macroeconomic variables.
-
-The initial results suggest that USD/TRY weekly changes generally have a negative correlation with banking stock returns. This means that during weeks when USD/TRY increased, banking stock returns tended to be weaker.
-
-EUR/TRY weekly changes also show a generally negative relationship with banking stock returns, although the strength of the relationship differs across stocks.
-
-CPI-related variables show weak but generally positive correlations with banking stock returns. However, these correlations should be interpreted carefully because CPI is originally a monthly variable and represents an inflation environment rather than a weekly inflation shock.
+```text
+data/processed/stock_macro_weekly.csv
+```
 
 The funding cost variable is interpreted as an operational monetary and funding condition indicator. It should not be interpreted as the official one-week repo policy rate.
 
-## 6. Regression Model Findings
+This distinction is important for correct economic interpretation.
 
-The macro sensitivity analysis includes four model specifications:
+## 5. Macro Correlation Findings
+
+The macro correlation analysis evaluates the relationship between weekly banking stock returns and macroeconomic variables.
+
+The analysis includes the following macro variables:
+
+* `usd_try_weekly_change`
+* `eur_try_weekly_change`
+* `cpi_index_weekly_change`
+* `cpi_index_yoy_change`
+* `funding_cost`
+* `funding_cost_weekly_diff`
+
+Initial correlation results suggest that USD/TRY weekly changes generally have a negative relationship with banking stock returns.
+
+This indicates that exchange rate increases are often associated with weaker weekly banking stock returns.
+
+EUR/TRY weekly changes also show generally negative relationships, although the strength of the relationship differs by ticker and model specification.
+
+CPI-related variables show weaker but more persistent positive relationships in several cases.
+
+Funding cost variables do not show a consistently strong correlation pattern across all selected banking stocks.
+
+These correlation findings should be interpreted as descriptive association, not causality.
+
+## 6. Macro Regression Findings
+
+The project estimates four macro sensitivity regression specifications:
 
 1. Core USD Model
 2. Core EUR Model
 3. Funding Cost Level Model
 4. Funding Cost Change Model
 
-The Core USD Model uses USD/TRY weekly change and CPI year-over-year change. Initial regression results show that USD/TRY weekly change has a negative coefficient for several banking stocks. This supports the descriptive finding that banking stock returns tend to weaken during weeks of TRY depreciation.
+The dependent variable in all models is weekly stock return.
 
-CPI year-over-year change appears statistically relevant in several model specifications. This suggests that the inflation regime has a measurable relationship with banking stock returns in the sample period.
+The Core USD Model includes:
 
-The Funding Cost Level Model uses the level of CBRT weighted average funding cost as a funding environment variable. The Funding Cost Change Model uses weekly changes in the funding cost variable.
+* `usd_try_weekly_change`
+* `cpi_index_yoy_change`
 
-Initial results indicate that funding cost variables do not consistently show strong statistical significance across all banking stocks. This suggests that short-term weekly return movements may be more directly associated with exchange rate changes and inflation regime variables than with weekly changes in funding cost.
+The Core EUR Model includes:
 
-## 7. Methodological Notes
+* `eur_try_weekly_change`
+* `cpi_index_yoy_change`
 
-The results should be interpreted as statistical association and macro sensitivity, not as causal effects.
+The Funding Cost Level Model includes:
 
-Important limitations:
+* `usd_try_weekly_change`
+* `cpi_index_yoy_change`
+* `funding_cost`
 
-* Correlation does not imply causation.
-* Regression coefficients show conditional statistical relationships, not direct economic causality.
-* CPI is monthly and aligned to weekly frequency through forward filling.
-* CBRT weighted average funding cost is not the official one-week repo policy rate.
-* Weekly stock returns may be affected by many other factors that are not included in the current model.
-* The current models are designed for exploratory analysis and portfolio presentation, not investment decision-making.
+The Funding Cost Change Model includes:
 
-## 8. Overall Interpretation
+* `usd_try_weekly_change`
+* `cpi_index_yoy_change`
+* `funding_cost_weekly_diff`
 
-The initial findings suggest that selected BIST banking stocks are sensitive to macroeconomic conditions, especially exchange rate movements and inflation regime indicators.
+Initial regression results indicate that USD/TRY weekly changes are negatively associated with several banking stock returns.
 
-GARAN.IS appears to show stronger risk-adjusted performance, while VAKBN.IS appears to carry a higher risk profile. USD/TRY weekly changes generally show a negative relationship with banking stock returns. CPI year-over-year change appears relevant in several regression specifications.
+The CPI YoY variable appears statistically relevant in several model specifications.
 
-These findings provide a strong analytical foundation for further development of the project. Future improvements may include model diagnostics, multicollinearity checks, rolling-window analysis, forecasting models and more advanced dashboard visualizations.
+Funding cost variables do not consistently appear as statistically significant explanatory variables for weekly banking stock returns.
+
+This suggests that inflation regime sensitivity may be more persistent than short-term funding cost sensitivity in the current weekly model structure.
+
+## 7. Model Diagnostics and Robust Inference Findings
+
+The project also includes model diagnostics and robust inference checks for the macro sensitivity regressions.
+
+The diagnostic results show that the models generally have low adjusted R-squared values. This indicates that weekly banking stock returns are only partially explained by the selected macroeconomic variables.
+
+This result is expected because weekly stock returns are affected by many additional factors, including market sentiment, bank-specific news, financial statements, regulatory developments, liquidity conditions and global risk appetite.
+
+The VIF results are very close to 1 across model specifications. This indicates that there is no meaningful multicollinearity problem among the explanatory variables used in the models.
+
+The diagnostic tests also show that residual normality is not generally satisfied and that heteroskedasticity may be present in several specifications. This is common in financial return data.
+
+For this reason, the project estimates additional robust regressions using HC3 robust standard errors.
+
+The robust regression results show that `cpi_index_yoy_change` remains the most stable macro variable across banking stocks and model specifications.
+
+In several models, `cpi_index_yoy_change` is statistically significant at the 5% level. It is also the strongest variable by absolute robust t-value in most model-stock combinations.
+
+The USD/TRY weekly change variable appears significant mainly for AKBNK.IS and GARAN.IS at the 10% level in selected specifications.
+
+The EUR/TRY weekly change variable provides a weaker signal and appears significant mainly for GARAN.IS at the 10% level.
+
+The funding cost level and funding cost change variables do not consistently appear as statistically significant explanatory variables in the robust results.
+
+HALKB.IS shows weaker macro sensitivity compared to the other selected banking stocks, as most robust model specifications do not produce statistically significant macro variables for this ticker.
+
+Overall, the robust results strengthen the interpretation that inflation regime sensitivity is more stable than short-term funding cost sensitivity in the current weekly banking stock return models.
+
+## 8. Methodological Notes
+
+The project uses weekly data to reduce daily noise and improve alignment between stock market data and macroeconomic indicators.
+
+CPI is originally monthly and is forward-filled to weekly frequency. Therefore, CPI should be interpreted as an inflation environment or inflation regime indicator rather than a true weekly inflation shock.
+
+CBRT weighted average funding cost is not the official one-week repo policy rate. It is used as an operational funding condition indicator.
+
+The macro regression models are exploratory.
+
+The results should be interpreted as statistical association and sensitivity, not causality.
+
+## 9. Overall Interpretation
+
+The initial results suggest that selected BIST banking stocks are sensitive to macroeconomic conditions, but the strength of this sensitivity differs by ticker and variable.
+
+Exchange rate changes generally show negative associations with weekly banking stock returns.
+
+CPI YoY change appears to be the most stable macro sensitivity indicator across the current model specifications.
+
+Funding cost variables do not consistently explain short-term weekly stock returns in the robust regression framework.
+
+The model diagnostics show that the explanatory power of simple macro models is limited, which is expected for weekly financial return data.
+
+The robust inference results improve the reliability of statistical interpretation by adjusting standard errors for heteroskedasticity concerns.
+
+Overall, the project provides a useful and extensible framework for combining banking stock analytics, macroeconomic indicators, regression modeling, diagnostics and dashboard reporting.

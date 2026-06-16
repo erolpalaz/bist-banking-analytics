@@ -2,7 +2,7 @@
 
 This document explains the main datasets, variables and output files used in the BIST Banking Analytics project.
 
-The project uses weekly stock market data, TCMB EVDS macroeconomic data, risk metrics, scoring outputs and macro sensitivity model results.
+The project uses weekly stock market data, TCMB EVDS macroeconomic data, risk metrics, scoring outputs, macro sensitivity model results, model diagnostics and robust regression outputs.
 
 ## 1. Raw Stock Price Data
 
@@ -51,21 +51,21 @@ Description:
 
 This file contains stock market data converted to weekly frequency.
 
-| Column        | Description                                                            |
-| ------------- | ---------------------------------------------------------------------- |
-| Date          | Weekly date, aligned to week ending                                    |
-| Ticker        | Stock or benchmark ticker                                              |
-| Open          | First available opening price of the week                              |
-| High          | Highest price of the week                                              |
-| Low           | Lowest price of the week                                               |
-| Close         | Last available closing price of the week                               |
-| Adj_Close     | Last available adjusted closing price of the week                      |
-| Volume        | Total weekly trading volume                                            |
-| weekly_return | Weekly percentage return calculated from adjusted close or close price |
+| Column        | Description                                                 |
+| ------------- | ----------------------------------------------------------- |
+| Date          | Weekly date, aligned to week ending                         |
+| Ticker        | Stock or benchmark ticker                                   |
+| Open          | First available opening price of the week                   |
+| High          | Highest price of the week                                   |
+| Low           | Lowest price of the week                                    |
+| Close         | Last available closing price of the week                    |
+| Adj_Close     | Last available adjusted closing price of the week           |
+| Volume        | Total weekly trading volume                                 |
+| weekly_return | Weekly return calculated from adjusted close or close price |
 
 Notes:
 
-* Weekly return is calculated as the percentage change in weekly price.
+* Weekly return is calculated from weekly price changes.
 * The first weekly return observation for each ticker is missing because there is no previous week for comparison.
 
 ## 3. Raw Macroeconomic Data
@@ -130,7 +130,7 @@ Notes:
 * Exchange rates and funding cost are converted to weekly frequency using the last available value of each week.
 * CPI is originally monthly and is forward-filled to weekly frequency.
 * `cpi_index_yoy_change` requires 52 weeks of lagged data, so the first 52 weekly observations are missing.
-* Weekly change variables have missing values in the first week for each ticker after merging.
+* Weekly change variables have missing values in the first week after transformation.
 
 ## 5. Merged Stock-Macro Dataset
 
@@ -369,7 +369,120 @@ Interpretation:
 * A lower p-value indicates stronger statistical evidence for the coefficient.
 * Regression results should be interpreted as association and sensitivity, not causality.
 
-## 12. Dashboard Data Usage
+## 12. Model Diagnostics Output
+
+File:
+
+```text
+outputs/macro_model_diagnostics.csv
+```
+
+Description:
+
+This file contains diagnostic test results for each macro sensitivity model and banking stock.
+
+| Column                       | Description                                            |
+| ---------------------------- | ------------------------------------------------------ |
+| model_name                   | Name of the macro sensitivity model                    |
+| Ticker                       | Banking stock ticker                                   |
+| status                       | Model diagnostic status                                |
+| observations                 | Number of observations used                            |
+| r_squared                    | R-squared value                                        |
+| adj_r_squared                | Adjusted R-squared value                               |
+| f_pvalue                     | F-test p-value                                         |
+| f_test_interpretation        | Interpretation of model-level statistical significance |
+| durbin_watson                | Durbin-Watson statistic                                |
+| durbin_watson_interpretation | Residual autocorrelation interpretation                |
+| breusch_pagan_pvalue         | Breusch-Pagan test p-value                             |
+| breusch_pagan_interpretation | Heteroskedasticity interpretation                      |
+| jarque_bera_pvalue           | Jarque-Bera test p-value                               |
+| jarque_bera_interpretation   | Residual normality interpretation                      |
+| residual_skewness            | Skewness of model residuals                            |
+| residual_kurtosis            | Kurtosis of model residuals                            |
+| max_vif                      | Maximum VIF value in the model                         |
+| mean_vif                     | Average VIF value in the model                         |
+| diagnostic_warnings          | Compact warning list based on diagnostic results       |
+
+## 13. VIF Output
+
+File:
+
+```text
+outputs/macro_vif_results.csv
+```
+
+Description:
+
+This file contains Variance Inflation Factor results for macro regression explanatory variables.
+
+| Column     | Description                         |
+| ---------- | ----------------------------------- |
+| model_name | Name of the macro sensitivity model |
+| Ticker     | Banking stock ticker                |
+| variable   | Explanatory variable                |
+| vif        | Variance Inflation Factor value     |
+| status     | VIF interpretation status           |
+
+Interpretation:
+
+| VIF Range | Interpretation                      |
+| --------- | ----------------------------------- |
+| Below 5   | Generally acceptable                |
+| 5 to 10   | Possible moderate multicollinearity |
+| Above 10  | Possible strong multicollinearity   |
+
+## 14. Robust Macro Regression Outputs
+
+Files:
+
+```text
+outputs/robust_macro_regression_core_usd_model.csv
+outputs/robust_macro_regression_core_eur_model.csv
+outputs/robust_macro_regression_funding_cost_level_model.csv
+outputs/robust_macro_regression_funding_cost_change_model.csv
+outputs/robust_macro_regression_all_models.csv
+outputs/robust_macro_regression_summary.csv
+```
+
+Description:
+
+These files contain macro sensitivity regression results estimated with HC3 robust standard errors.
+
+The coefficient estimates are based on OLS, but the standard errors, t-statistics, p-values and confidence intervals are adjusted for heteroskedasticity concerns.
+
+Common columns:
+
+| Column          | Description                                 |
+| --------------- | ------------------------------------------- |
+| model_name      | Name of the macro sensitivity model         |
+| Ticker          | Banking stock ticker                        |
+| status          | Regression status                           |
+| observations    | Number of observations used                 |
+| robust_cov_type | Robust covariance estimator type            |
+| r_squared       | R-squared value from the OLS model          |
+| adj_r_squared   | Adjusted R-squared value from the OLS model |
+| ols_f_pvalue    | Original OLS F-test p-value                 |
+
+Variable-specific columns:
+
+| Column Type               | Description                               |
+| ------------------------- | ----------------------------------------- |
+| variable_coef             | Estimated coefficient                     |
+| variable_robust_std_error | HC3 robust standard error                 |
+| variable_robust_tvalue    | Robust t-statistic                        |
+| variable_robust_pvalue    | Robust p-value                            |
+| variable_robust_ci_lower  | Lower bound of robust confidence interval |
+| variable_robust_ci_upper  | Upper bound of robust confidence interval |
+
+The summary file includes:
+
+| Column                           | Description                                                  |
+| -------------------------------- | ------------------------------------------------------------ |
+| significant_5pct_variables       | Variables significant at the 5% level using robust p-values  |
+| significant_10pct_variables      | Variables significant at the 10% level using robust p-values |
+| strongest_variable_by_abs_tvalue | Variable with the highest absolute robust t-statistic        |
+
+## 15. Dashboard Data Usage
 
 Dashboard file:
 
@@ -387,7 +500,7 @@ The dashboard uses the following files:
 | Risk Scores       | `risk_scores.csv`                                            |
 | Macro Sensitivity | macro correlation, model summary and regression output files |
 
-## 13. Missing Value Notes
+## 16. Missing Value Notes
 
 Expected missing values:
 
@@ -402,14 +515,14 @@ Expected missing values:
 
 These missing values are expected and should not be interpreted as data errors.
 
-## 14. General Interpretation Notes
+## 17. General Interpretation Notes
 
 This project is designed for educational, analytical and portfolio purposes.
 
 Important interpretation rules:
 
 * Correlation does not imply causality.
-* Regression results show statistical association, not direct economic causation.
-* CPI is originally monthly and is aligned to weekly frequency.
+* Regression outputs show statistical association, not causal effects.
+* CPI is originally monthly and aligned to weekly frequency.
 * Funding cost is not the official policy rate.
-* Model results should not be interpreted as investment advice.
+* The dashboard and model outputs should not be interpreted as investment advice.

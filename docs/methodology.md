@@ -95,3 +95,22 @@ The current version has several limitations:
 3. It does not yet include KAP disclosures or financial statement data.
 4. The scoring system is rule-based and should be interpreted as an analytical comparison tool.
 5. The project does not provide investment advice.
+
+## Macro Sensitivity Methodology
+
+The macroeconomic dataset includes USD/TRY, EUR/TRY, CPI index and CBRT weighted average funding cost variables obtained from TCMB EVDS.
+
+All variables are aligned to weekly frequency in order to match weekly stock returns. Exchange rates and the weighted average funding cost are converted to weekly observations using the last available value of each week. CPI is a monthly variable and is forward-filled to weekly frequency because the most recently announced CPI value remains the latest available inflation information until the next monthly release.
+
+The macro sensitivity analysis is divided into separate model specifications:
+
+1. Core USD Model: USD/TRY weekly change and CPI year-over-year change.
+2. Core EUR Model: EUR/TRY weekly change and CPI year-over-year change.
+3. Funding Cost Level Model: USD/TRY weekly change, CPI year-over-year change and CBRT weighted average funding cost level.
+4. Funding Cost Change Model: USD/TRY weekly change, CPI year-over-year change and weekly change in CBRT weighted average funding cost.
+
+The CBRT weighted average funding cost is not the official one-week repo policy rate. It is used as an operational monetary policy and funding condition indicator. Therefore, its level is interpreted as the prevailing funding cost environment, while its weekly difference is interpreted as short-term changes in funding conditions.
+
+The results should be interpreted as statistical association and macro sensitivity, not as causal evidence.
+
+

@@ -1,0 +1,21 @@
+{
+    "start_date": "01-01-2018",
+    "series": {
+        "usd_try": {
+            "code": "TP.DK.USD.A.YTL",
+            "description": "USD/TRY buying exchange rate"
+        },
+        "eur_try": {
+            "code": "TP.DK.EUR.A.YTL",
+            "description": "EUR/TRY buying exchange rate"
+        },
+        "cpi_index": {
+            "code": "TP.FE.OKTG01",
+            "description": "Consumer Price Index"
+        },
+        "funding_cost": {
+            "code": "TP.APIFON4",
+            "description": "CBRT weighted average funding cost"
+        }
+    }
+}

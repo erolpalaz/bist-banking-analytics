@@ -12,56 +12,56 @@ The project analyzes selected BIST banking stocks and compares them with the BIS
 
 Selected banking stocks:
 
-| Ticker | Bank |
-|---|---|
-| AKBNK.IS | Akbank |
-| GARAN.IS | Garanti BBVA |
-| HALKB.IS | Halkbank |
-| ISCTR.IS | İş Bankası C |
-| VAKBN.IS | VakıfBank |
+| Ticker   | Bank               |
+| -------- | ------------------ |
+| AKBNK.IS | Akbank             |
+| GARAN.IS | Garanti BBVA       |
+| HALKB.IS | Halkbank           |
+| ISCTR.IS | İş Bankası C       |
+| VAKBN.IS | VakıfBank          |
 | YKBNK.IS | Yapı Kredi Bankası |
 
 Benchmark:
 
-| Ticker | Description |
-|---|---|
+| Ticker   | Description    |
+| -------- | -------------- |
 | XU100.IS | BIST 100 Index |
 
 ## Project Objectives
 
 The project is designed to answer the following analytical questions:
 
-- How did selected BIST banking stocks perform over time?
-- Which banking stocks show higher volatility and downside risk?
-- Which stocks have stronger risk-adjusted performance?
-- How are weekly banking stock returns associated with macroeconomic variables?
-- Which macro variables appear more stable in regression-based sensitivity analysis?
-- Do the macro regression models show multicollinearity, heteroskedasticity or residual normality issues?
-- How do robust standard errors affect statistical inference?
-- Does macro sensitivity remain stable over time?
-- How can the results be presented in an interactive dashboard?
+* How did selected BIST banking stocks perform over time?
+* Which banking stocks show higher volatility and downside risk?
+* Which stocks have stronger risk-adjusted performance?
+* How are weekly banking stock returns associated with macroeconomic variables?
+* Which macro variables appear more stable in regression-based sensitivity analysis?
+* Do the macro regression models show multicollinearity, heteroskedasticity or residual normality issues?
+* How do robust standard errors affect statistical inference?
+* Does macro sensitivity remain stable over time?
+* How can the results be presented in an interactive dashboard?
 
 ## Main Features
 
 The project includes the following components:
 
-- Yahoo Finance market data collection
-- Weekly stock price transformation
-- Weekly return calculation
-- Risk metric calculation
-- Risk score and performance score generation
-- TCMB EVDS macroeconomic data integration
-- Stock-macro merged panel dataset
-- Macro correlation analysis
-- OLS macro regression models
-- Model diagnostics
-- VIF analysis
-- HC3 robust standard errors
-- Robust regression summaries
-- Rolling macro sensitivity analysis
-- 52-week rolling correlation analysis
-- Streamlit dashboard
-- Project documentation
+* Yahoo Finance market data collection
+* Weekly stock price transformation
+* Weekly return calculation
+* Risk metric calculation
+* Risk score and performance score generation
+* TCMB EVDS macroeconomic data integration
+* Stock-macro merged panel dataset
+* Macro correlation analysis
+* OLS macro regression models
+* Model diagnostics
+* VIF analysis
+* HC3 robust standard errors
+* Robust regression summaries
+* Rolling macro sensitivity analysis
+* 52-week rolling correlation analysis
+* Streamlit dashboard
+* Project documentation
 
 ## Data Sources
 
@@ -71,12 +71,12 @@ Market data is downloaded from Yahoo Finance using the `yfinance` Python package
 
 The raw market data includes:
 
-- Open
-- High
-- Low
-- Close
-- Adjusted Close
-- Volume
+* Open
+* High
+* Low
+* Close
+* Adjusted Close
+* Volume
 
 ### Macroeconomic Data
 
@@ -84,12 +84,12 @@ Macroeconomic data is collected from TCMB EVDS.
 
 The macro variables used in the project are:
 
-| Variable | EVDS Series Code | Description |
-|---|---|---|
-| usd_try | TP.DK.USD.A.YTL | USD/TRY buying exchange rate |
-| eur_try | TP.DK.EUR.A.YTL | EUR/TRY buying exchange rate |
-| cpi_index | TP.FE.OKTG01 | Consumer Price Index |
-| funding_cost | TP.APIFON4 | CBRT weighted average funding cost |
+| Variable     | EVDS Series Code | Description                        |
+| ------------ | ---------------- | ---------------------------------- |
+| usd_try      | TP.DK.USD.A.YTL  | USD/TRY buying exchange rate       |
+| eur_try      | TP.DK.EUR.A.YTL  | EUR/TRY buying exchange rate       |
+| cpi_index    | TP.FE.OKTG01     | Consumer Price Index               |
+| funding_cost | TP.APIFON4       | CBRT weighted average funding cost |
 
 Important note:
 
@@ -308,12 +308,12 @@ This script evaluates macro regression models using basic diagnostic tests.
 
 The diagnostic framework includes:
 
-- Adjusted R-squared
-- F-test p-value
-- Durbin-Watson statistic
-- Breusch-Pagan test
-- Jarque-Bera test
-- Variance Inflation Factor
+* Adjusted R-squared
+* F-test p-value
+* Durbin-Watson statistic
+* Breusch-Pagan test
+* Jarque-Bera test
+* Variance Inflation Factor
 
 Main outputs:
 
@@ -362,13 +362,13 @@ outputs/rolling_macro_correlation_summary.csv
 
 The rolling correlation summary includes:
 
-- Mean rolling correlation
-- Median rolling correlation
-- Minimum rolling correlation
-- Maximum rolling correlation
-- Latest rolling correlation
-- Positive correlation share
-- Relationship stability classification
+* Mean rolling correlation
+* Median rolling correlation
+* Minimum rolling correlation
+* Maximum rolling correlation
+* Latest rolling correlation
+* Positive correlation share
+* Relationship stability classification
 
 ### 10. Streamlit Dashboard
 
@@ -382,16 +382,16 @@ This command launches the interactive dashboard.
 
 The dashboard includes the following pages:
 
-| Page | Description |
-|---|---|
-| Market Overview | General overview of selected stocks and benchmark |
-| Stock Comparison | Stock-level comparison using price, return and volume data |
-| Risk Metrics | Risk and performance metrics |
-| Risk Scores | Composite risk and performance scores |
-| Macro Sensitivity | Macro correlation and OLS regression results |
-| Model Diagnostics | Regression diagnostics and VIF results |
-| Robust Results | HC3 robust regression summaries and detailed robust outputs |
-| Rolling Macro Sensitivity | 52-week rolling correlation analysis between banking stock returns and macro variables |
+| Page                      | Description                                                                                                                |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Market Overview           | General overview of selected stocks and benchmark                                                                          |
+| Stock Comparison          | Stock-level comparison using price, return and volume data                                                                 |
+| Risk Metrics              | Risk and performance metrics                                                                                               |
+| Risk Scores               | Composite risk and performance scores                                                                                      |
+| Macro Sensitivity         | Macro correlation and OLS regression results                                                                               |
+| Model Diagnostics         | Regression diagnostics and VIF results                                                                                     |
+| Robust Results            | HC3 robust regression summaries and detailed robust outputs                                                                |
+| Rolling Macro Sensitivity | 52-week rolling correlation analysis with automated insight text, relationship stability overview and interpretation notes |
 
 ## Main Analytical Methods
 
@@ -411,13 +411,13 @@ The first weekly return observation for each ticker is missing because there is 
 
 The project calculates:
 
-- Mean weekly return
-- Annualized return
-- Weekly volatility
-- Annualized volatility
-- Maximum drawdown
-- Sharpe ratio
-- Number of observations
+* Mean weekly return
+* Annualized return
+* Weekly volatility
+* Annualized volatility
+* Maximum drawdown
+* Sharpe ratio
+* Number of observations
 
 ## Risk Scoring
 
@@ -435,12 +435,12 @@ The macro correlation analysis calculates Pearson correlations between weekly st
 
 Macro variables included:
 
-- `usd_try_weekly_change`
-- `eur_try_weekly_change`
-- `cpi_index_weekly_change`
-- `cpi_index_yoy_change`
-- `funding_cost`
-- `funding_cost_weekly_diff`
+* `usd_try_weekly_change`
+* `eur_try_weekly_change`
+* `cpi_index_weekly_change`
+* `cpi_index_yoy_change`
+* `funding_cost`
+* `funding_cost_weekly_diff`
 
 Correlation results should be interpreted as descriptive association, not causality.
 
@@ -502,14 +502,14 @@ The project applies model diagnostics to evaluate the reliability of macro regre
 
 The diagnostic framework includes:
 
-| Diagnostic Test | Purpose |
-|---|---|
-| Adjusted R-squared | Measures explanatory power after adjusting for the number of variables |
-| F-test p-value | Evaluates overall model significance |
-| Durbin-Watson statistic | Checks possible residual autocorrelation |
-| Breusch-Pagan test | Checks possible heteroskedasticity |
-| Jarque-Bera test | Checks residual normality |
-| Variance Inflation Factor | Checks multicollinearity among explanatory variables |
+| Diagnostic Test           | Purpose                                                                |
+| ------------------------- | ---------------------------------------------------------------------- |
+| Adjusted R-squared        | Measures explanatory power after adjusting for the number of variables |
+| F-test p-value            | Evaluates overall model significance                                   |
+| Durbin-Watson statistic   | Checks possible residual autocorrelation                               |
+| Breusch-Pagan test        | Checks possible heteroskedasticity                                     |
+| Jarque-Bera test          | Checks residual normality                                              |
+| Variance Inflation Factor | Checks multicollinearity among explanatory variables                   |
 
 The diagnostic results show that the macro sensitivity models have relatively low explanatory power. This is expected because weekly stock returns are influenced by many factors beyond a limited set of macroeconomic variables.
 
@@ -523,10 +523,10 @@ Because heteroskedasticity may be present in financial return data, the project 
 
 The robust regression framework keeps the OLS coefficient estimates but adjusts:
 
-- Standard errors
-- t-statistics
-- p-values
-- Confidence intervals
+* Standard errors
+* t-statistics
+* p-values
+* Confidence intervals
 
 The robust results are used to evaluate whether the statistical significance of macro variables remains stable after correcting standard errors.
 
@@ -536,23 +536,27 @@ The project includes a 52-week rolling correlation analysis to evaluate whether 
 
 The rolling analysis uses the following macro variables:
 
-- `usd_try_weekly_change`
-- `eur_try_weekly_change`
-- `cpi_index_yoy_change`
-- `funding_cost`
-- `funding_cost_weekly_diff`
+* `usd_try_weekly_change`
+* `eur_try_weekly_change`
+* `cpi_index_yoy_change`
+* `funding_cost`
+* `funding_cost_weekly_diff`
 
 For each banking stock and macro variable, the project calculates rolling correlations using a 52-week window.
 
 The summary output classifies relationships as:
 
-| Classification | Meaning |
-|---|---|
-| mostly_positive | Rolling correlation is positive in at least 75% of observations |
-| mostly_negative | Rolling correlation is positive in at most 25% of observations |
-| unstable_or_time_varying | Relationship changes direction over time |
+| Classification           | Meaning                                                         |
+| ------------------------ | --------------------------------------------------------------- |
+| mostly_positive          | Rolling correlation is positive in at least 75% of observations |
+| mostly_negative          | Rolling correlation is positive in at most 25% of observations  |
+| unstable_or_time_varying | Relationship changes direction over time                        |
 
 The rolling analysis helps identify whether macro sensitivity is persistent or regime-dependent.
+
+The dashboard includes an enhanced Rolling Macro Sensitivity page. This page provides KPI cards, automated insight text, relationship stability summaries, rolling correlation charts, latest rolling correlation charts, summary tables and interpretation notes.
+
+The enhanced dashboard makes the rolling analysis easier to interpret for portfolio viewers by highlighting whether selected relationships are mostly negative, mostly positive or unstable over time.
 
 ## Initial Findings
 
@@ -590,15 +594,15 @@ CPI YoY shows weak positive rolling correlations, while funding cost level does 
 
 The project follows these interpretation rules:
 
-- Correlation does not imply causality.
-- Regression outputs show statistical association, not causal effects.
-- Rolling correlation shows time-varying association, not causality.
-- CPI is originally monthly and aligned to weekly frequency.
-- CPI should be interpreted as an inflation environment or inflation regime indicator.
-- CBRT weighted average funding cost is not the official one-week repo policy rate.
-- Funding cost is used as an operational monetary and funding condition indicator.
-- Robust standard errors improve statistical inference under possible heteroskedasticity.
-- The dashboard and model outputs should not be interpreted as investment advice.
+* Correlation does not imply causality.
+* Regression outputs show statistical association, not causal effects.
+* Rolling correlation shows time-varying association, not causality.
+* CPI is originally monthly and aligned to weekly frequency.
+* CPI should be interpreted as an inflation environment or inflation regime indicator.
+* CBRT weighted average funding cost is not the official one-week repo policy rate.
+* Funding cost is used as an operational monetary and funding condition indicator.
+* Robust standard errors improve statistical inference under possible heteroskedasticity.
+* The dashboard and model outputs should not be interpreted as investment advice.
 
 ## Generated Files and Git Policy
 
@@ -622,28 +626,28 @@ This keeps the GitHub repository clean while allowing users to reproduce outputs
 
 Additional documentation is available in the `docs/` folder:
 
-| File | Description |
-|---|---|
-| docs/methodology.md | Explains the methodological framework |
-| docs/data_dictionary.md | Defines datasets, variables and output files |
-| docs/initial_findings.md | Summarizes initial analytical findings |
+| File                          | Description                                       |
+| ----------------------------- | ------------------------------------------------- |
+| docs/methodology.md           | Explains the methodological framework             |
+| docs/data_dictionary.md       | Defines datasets, variables and output files      |
+| docs/initial_findings.md      | Summarizes initial analytical findings            |
 | docs/project_quality_check.md | Summarizes project consistency and quality checks |
 
 ## Requirements
 
 Main Python packages used in the project:
 
-- pandas
-- numpy
-- yfinance
-- matplotlib
-- plotly
-- streamlit
-- scikit-learn
-- statsmodels
-- openpyxl
-- python-dotenv
-- requests
+* pandas
+* numpy
+* yfinance
+* matplotlib
+* plotly
+* streamlit
+* scikit-learn
+* statsmodels
+* openpyxl
+* python-dotenv
+* requests
 
 Install all dependencies with:
 
@@ -681,16 +685,16 @@ python -m streamlit run dashboard/app.py
 
 Possible future improvements include:
 
-- Rolling-window correlation analysis
-- Rolling beta analysis
-- Forecasting models
-- Bank-level financial ratio integration
-- Residual visualization
-- Model comparison dashboard
-- More advanced risk scoring
-- Streamlit Cloud deployment
-- Automated report generation
-- Sector-level comparison with non-bank BIST stocks
+* Rolling-window correlation analysis
+* Rolling beta analysis
+* Forecasting models
+* Bank-level financial ratio integration
+* Residual visualization
+* Model comparison dashboard
+* More advanced risk scoring
+* Streamlit Cloud deployment
+* Automated report generation
+* Sector-level comparison with non-bank BIST stocks
 
 ## Disclaimer
 

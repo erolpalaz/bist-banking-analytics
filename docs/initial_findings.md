@@ -12,16 +12,16 @@ The selected BIST banking stocks show different return and risk characteristics 
 
 The project analyzes the following banking stocks:
 
-- AKBNK.IS
-- GARAN.IS
-- HALKB.IS
-- ISCTR.IS
-- VAKBN.IS
-- YKBNK.IS
+* AKBNK.IS
+* GARAN.IS
+* HALKB.IS
+* ISCTR.IS
+* VAKBN.IS
+* YKBNK.IS
 
 The BIST 100 index is used as the market benchmark:
 
-- XU100.IS
+* XU100.IS
 
 The weekly stock dataset allows comparative analysis of cumulative performance, weekly return behavior, volatility and downside risk.
 
@@ -33,13 +33,13 @@ The project calculates several risk and performance indicators for each stock.
 
 The main risk and performance metrics include:
 
-- Mean weekly return
-- Annualized return
-- Weekly volatility
-- Annualized volatility
-- Maximum drawdown
-- Sharpe ratio
-- Number of observations
+* Mean weekly return
+* Annualized return
+* Weekly volatility
+* Annualized volatility
+* Maximum drawdown
+* Sharpe ratio
+* Number of observations
 
 The risk metrics show that banking stocks differ meaningfully in their risk-return profiles.
 
@@ -69,10 +69,10 @@ The project integrates stock market data with macroeconomic data from TCMB EVDS.
 
 The macroeconomic variables used in the project are:
 
-- USD/TRY buying exchange rate
-- EUR/TRY buying exchange rate
-- Consumer Price Index
-- CBRT weighted average funding cost
+* USD/TRY buying exchange rate
+* EUR/TRY buying exchange rate
+* Consumer Price Index
+* CBRT weighted average funding cost
 
 The stock data and macroeconomic data are aligned to weekly frequency.
 
@@ -92,12 +92,12 @@ The macro correlation analysis evaluates the relationship between weekly banking
 
 The analysis includes the following macro variables:
 
-- `usd_try_weekly_change`
-- `eur_try_weekly_change`
-- `cpi_index_weekly_change`
-- `cpi_index_yoy_change`
-- `funding_cost`
-- `funding_cost_weekly_diff`
+* `usd_try_weekly_change`
+* `eur_try_weekly_change`
+* `cpi_index_weekly_change`
+* `cpi_index_yoy_change`
+* `funding_cost`
+* `funding_cost_weekly_diff`
 
 Initial correlation results suggest that USD/TRY weekly changes generally have a negative relationship with banking stock returns.
 
@@ -124,25 +124,25 @@ The dependent variable in all models is weekly stock return.
 
 The Core USD Model includes:
 
-- `usd_try_weekly_change`
-- `cpi_index_yoy_change`
+* `usd_try_weekly_change`
+* `cpi_index_yoy_change`
 
 The Core EUR Model includes:
 
-- `eur_try_weekly_change`
-- `cpi_index_yoy_change`
+* `eur_try_weekly_change`
+* `cpi_index_yoy_change`
 
 The Funding Cost Level Model includes:
 
-- `usd_try_weekly_change`
-- `cpi_index_yoy_change`
-- `funding_cost`
+* `usd_try_weekly_change`
+* `cpi_index_yoy_change`
+* `funding_cost`
 
 The Funding Cost Change Model includes:
 
-- `usd_try_weekly_change`
-- `cpi_index_yoy_change`
-- `funding_cost_weekly_diff`
+* `usd_try_weekly_change`
+* `cpi_index_yoy_change`
+* `funding_cost_weekly_diff`
 
 Initial regression results indicate that USD/TRY weekly changes are negatively associated with several banking stock returns.
 
@@ -204,6 +204,12 @@ The funding cost weekly difference shows weak average correlations but more nega
 
 Overall, the rolling analysis confirms that macro sensitivity is not constant over time. USD/TRY weekly change shows the most persistent negative relationship, while EUR/TRY, CPI and funding cost variables show more time-varying behavior.
 
+The Rolling Macro Sensitivity dashboard page was refined to make these findings easier to interpret. The page now includes automated insight text, relationship stability summaries, KPI cards and interpretation notes.
+
+For the default USD/TRY weekly change view, the dashboard highlights that all six selected banking stocks are classified as mostly negative. This makes the most important rolling analysis finding directly visible to users without requiring manual inspection of the raw output tables.
+
+The refined dashboard improves the project’s portfolio value because it connects statistical output with readable business interpretation.
+
 ## 9. Methodological Notes
 
 The project uses weekly data to reduce daily noise and improve alignment between stock market data and macroeconomic indicators.
@@ -233,5 +239,7 @@ The model diagnostics show that the explanatory power of simple macro models is 
 The robust inference results improve the reliability of statistical interpretation by adjusting standard errors for heteroskedasticity concerns.
 
 The rolling macro sensitivity analysis adds a time-varying perspective and shows that USD/TRY weekly change has the most persistent negative relationship with banking stock returns.
+
+The refined rolling dashboard improves the interpretability of this finding by automatically highlighting key rolling sensitivity patterns.
 
 Overall, the project provides a useful and extensible framework for combining banking stock analytics, macroeconomic indicators, regression modeling, diagnostics, robust inference, rolling analysis and dashboard reporting.

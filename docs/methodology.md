@@ -2,7 +2,7 @@
 
 This document explains the methodological framework used in the BIST Banking Analytics project.
 
-The project analyzes selected BIST banking stocks using weekly market data, financial risk metrics, macroeconomic indicators from TCMB EVDS and regression-based macro sensitivity models.
+The project analyzes selected BIST banking stocks using weekly market data, financial risk metrics, macroeconomic indicators from TCMB EVDS, regression-based macro sensitivity models, model diagnostics, robust inference and rolling macro sensitivity analysis.
 
 The results are designed for exploratory financial analysis, dashboard reporting and portfolio presentation. They should not be interpreted as investment advice or causal evidence.
 
@@ -10,20 +10,22 @@ The results are designed for exploratory financial analysis, dashboard reporting
 
 The main objective of this project is to build a structured analytics platform for selected BIST banking stocks.
 
-The methodology focuses on four main analytical layers:
+The methodology focuses on five main analytical layers:
 
 1. Market data collection and weekly return calculation
 2. Risk and performance metric calculation
 3. Risk and performance scoring
 4. Macroeconomic sensitivity analysis
+5. Rolling macro sensitivity analysis
 
 The project is designed to answer the following questions:
 
-* How did selected BIST banking stocks perform over time?
-* Which stocks show higher volatility and drawdown risk?
-* Which stocks show stronger risk-adjusted performance?
-* How are weekly banking stock returns statistically associated with macroeconomic variables?
-* How can market, risk and macro indicators be presented in an interactive dashboard?
+- How did selected BIST banking stocks perform over time?
+- Which stocks show higher volatility and drawdown risk?
+- Which stocks show stronger risk-adjusted performance?
+- How are weekly banking stock returns statistically associated with macroeconomic variables?
+- Are macro sensitivity relationships stable over time?
+- How can market, risk and macro indicators be presented in an interactive dashboard?
 
 ## 2. Stock Market Data Methodology
 
@@ -31,16 +33,16 @@ Historical stock market data is downloaded from Yahoo Finance using the `yfinanc
 
 The selected stock universe includes:
 
-* AKBNK.IS
-* GARAN.IS
-* HALKB.IS
-* ISCTR.IS
-* VAKBN.IS
-* YKBNK.IS
+- AKBNK.IS
+- GARAN.IS
+- HALKB.IS
+- ISCTR.IS
+- VAKBN.IS
+- YKBNK.IS
 
 The BIST 100 index is used as a benchmark:
 
-* XU100.IS
+- XU100.IS
 
 The raw data includes open, high, low, close, adjusted close and volume fields.
 
@@ -50,21 +52,21 @@ The project uses weekly frequency for the main analysis.
 
 The weekly transformation is applied because:
 
-* It reduces short-term daily noise.
-* It creates a cleaner time-series structure for comparative analysis.
-* It aligns stock market data with lower-frequency macroeconomic indicators.
-* It is suitable for medium-term risk and macro sensitivity analysis.
+- It reduces short-term daily noise.
+- It creates a cleaner time-series structure for comparative analysis.
+- It aligns stock market data with lower-frequency macroeconomic indicators.
+- It is suitable for medium-term risk and macro sensitivity analysis.
 
 Weekly data is created using week-ending observations.
 
 For each ticker:
 
-* Weekly open is based on the first available opening price of the week.
-* Weekly high is the maximum price of the week.
-* Weekly low is the minimum price of the week.
-* Weekly close is the last available closing price of the week.
-* Weekly adjusted close is the last available adjusted closing price of the week.
-* Weekly volume is the total trading volume of the week.
+- Weekly open is based on the first available opening price of the week.
+- Weekly high is the maximum price of the week.
+- Weekly low is the minimum price of the week.
+- Weekly close is the last available closing price of the week.
+- Weekly adjusted close is the last available adjusted closing price of the week.
+- Weekly volume is the total trading volume of the week.
 
 ## 4. Weekly Return Calculation
 
@@ -136,15 +138,15 @@ The scoring framework is designed to make cross-stock comparison easier.
 
 Risk score components may include:
 
-* Annualized volatility
-* Maximum drawdown
-* Benchmark sensitivity metrics where available
+- Annualized volatility
+- Maximum drawdown
+- Benchmark sensitivity metrics where available
 
 Performance score components may include:
 
-* Annualized return
-* Sharpe ratio
-* Drawdown resilience
+- Annualized return
+- Sharpe ratio
+- Drawdown resilience
 
 The scoring system is relative. This means that stocks are ranked and compared within the selected stock universe.
 
@@ -158,11 +160,11 @@ Macroeconomic data is collected from TCMB EVDS.
 
 The project uses the following macroeconomic variables:
 
-| Variable                           | Description                             |
-| ---------------------------------- | --------------------------------------- |
-| USD/TRY                            | USD/TRY buying exchange rate            |
-| EUR/TRY                            | EUR/TRY buying exchange rate            |
-| CPI Index                          | Consumer Price Index                    |
+| Variable | Description |
+|---|---|
+| USD/TRY | USD/TRY buying exchange rate |
+| EUR/TRY | EUR/TRY buying exchange rate |
+| CPI Index | Consumer Price Index |
 | CBRT Weighted Average Funding Cost | Operational funding condition indicator |
 
 The EVDS series are configured in:
@@ -236,7 +238,7 @@ The final merged dataset is:
 data/processed/stock_macro_weekly.csv
 ```
 
-This dataset is used for macro correlation and regression analysis.
+This dataset is used for macro correlation, regression analysis and rolling macro sensitivity analysis.
 
 Each row represents one ticker-week observation.
 
@@ -246,16 +248,16 @@ The macro correlation analysis calculates the Pearson correlation between weekly
 
 The correlation output includes:
 
-* Ticker
-* Macro variable
-* Correlation coefficient
-* Number of observations
+- Ticker
+- Macro variable
+- Correlation coefficient
+- Number of observations
 
 Correlation values are interpreted as follows:
 
-* Positive correlation means the stock return and macro variable tended to move in the same direction.
-* Negative correlation means the stock return and macro variable tended to move in opposite directions.
-* Correlation close to zero indicates weak linear association.
+- Positive correlation means the stock return and macro variable tended to move in the same direction.
+- Negative correlation means the stock return and macro variable tended to move in opposite directions.
+- Correlation close to zero indicates weak linear association.
 
 Correlation does not imply causality.
 
@@ -279,12 +281,12 @@ weekly_return = constant + macro_variables + error
 
 The regression outputs include:
 
-* Coefficients
-* P-values
-* R-squared
-* Adjusted R-squared
-* F-test p-value
-* Number of observations
+- Coefficients
+- P-values
+- R-squared
+- Adjusted R-squared
+- F-test p-value
+- Number of observations
 
 The models are estimated separately for each banking stock.
 
@@ -358,10 +360,10 @@ Regression coefficients indicate the direction and size of the statistical relat
 
 General interpretation:
 
-* A negative coefficient indicates a negative statistical relationship.
-* A positive coefficient indicates a positive statistical relationship.
-* A lower p-value indicates stronger statistical evidence for the coefficient.
-* A higher p-value indicates weaker statistical evidence.
+- A negative coefficient indicates a negative statistical relationship.
+- A positive coefficient indicates a positive statistical relationship.
+- A lower p-value indicates stronger statistical evidence for the coefficient.
+- A higher p-value indicates weaker statistical evidence.
 
 R-squared measures the share of variation in weekly returns explained by the model.
 
@@ -377,14 +379,14 @@ In addition to standard OLS regression outputs, the project applies basic diagno
 
 The diagnostic framework includes:
 
-| Diagnostic Test           | Purpose                                                                |
-| ------------------------- | ---------------------------------------------------------------------- |
-| Adjusted R-squared        | Measures explanatory power after adjusting for the number of variables |
-| F-test p-value            | Evaluates overall model significance                                   |
-| Durbin-Watson statistic   | Checks possible residual autocorrelation                               |
-| Breusch-Pagan test        | Checks possible heteroskedasticity                                     |
-| Jarque-Bera test          | Checks residual normality                                              |
-| Variance Inflation Factor | Checks multicollinearity among explanatory variables                   |
+| Diagnostic Test | Purpose |
+|---|---|
+| Adjusted R-squared | Measures explanatory power after adjusting for the number of variables |
+| F-test p-value | Evaluates overall model significance |
+| Durbin-Watson statistic | Checks possible residual autocorrelation |
+| Breusch-Pagan test | Checks possible heteroskedasticity |
+| Jarque-Bera test | Checks residual normality |
+| Variance Inflation Factor | Checks multicollinearity among explanatory variables |
 
 The diagnostic results show that the macro sensitivity models have relatively low explanatory power. This is expected because weekly stock returns are affected by many factors beyond a limited set of macroeconomic variables.
 
@@ -400,11 +402,60 @@ The robust inference results are used to evaluate whether the statistical signif
 
 Overall, the robust results suggest that CPI year-over-year change is the most stable macro sensitivity indicator across banking stocks, while funding cost variables do not consistently appear as statistically significant short-term return drivers.
 
-## 15. Methodological Limitations
+## 15. Rolling Macro Sensitivity Analysis
+
+The project also applies rolling macro sensitivity analysis to evaluate whether the relationship between weekly banking stock returns and macroeconomic variables changes over time.
+
+While static correlation and regression models summarize the average relationship over the full sample, rolling correlation analysis provides a time-varying view of macro sensitivity.
+
+The rolling analysis uses a 52-week window.
+
+The dependent market variable is:
+
+```text
+weekly_return
+```
+
+The macro variables included in the rolling analysis are:
+
+```text
+usd_try_weekly_change
+eur_try_weekly_change
+cpi_index_yoy_change
+funding_cost
+funding_cost_weekly_diff
+```
+
+For each banking stock and macro variable, the project calculates the rolling correlation between weekly stock returns and the selected macroeconomic variable.
+
+The rolling correlation summary includes:
+
+- Number of observations
+- Mean rolling correlation
+- Median rolling correlation
+- Minimum rolling correlation
+- Maximum rolling correlation
+- Latest rolling correlation
+- Positive correlation share
+- Relationship stability classification
+
+The relationship stability classification is based on the share of rolling correlations that are positive.
+
+| Classification | Rule |
+|---|---|
+| mostly_positive | Positive correlation share is greater than or equal to 0.75 |
+| mostly_negative | Positive correlation share is less than or equal to 0.25 |
+| unstable_or_time_varying | Positive correlation share is between 0.25 and 0.75 |
+
+This method helps distinguish persistent relationships from time-varying or regime-dependent relationships.
+
+The rolling analysis results suggest that USD/TRY weekly change has the most stable negative relationship with selected BIST banking stock returns.
+
+## 16. Methodological Limitations
 
 The project has several methodological limitations.
 
-### 15.1 No Causal Identification
+### 16.1 No Causal Identification
 
 The models are exploratory and descriptive.
 
@@ -412,20 +463,20 @@ They do not include a causal identification strategy.
 
 Therefore, the results cannot be interpreted as causal effects.
 
-### 15.2 Omitted Variables
+### 16.2 Omitted Variables
 
 Weekly banking stock returns may be affected by many variables not included in the current models, such as:
 
-* Bank-specific financial statements
-* Regulatory announcements
-* Global risk appetite
-* CDS premiums
-* Domestic political events
-* Market liquidity
-* Earnings expectations
-* Sector-specific news
+- Bank-specific financial statements
+- Regulatory announcements
+- Global risk appetite
+- CDS premiums
+- Domestic political events
+- Market liquidity
+- Earnings expectations
+- Sector-specific news
 
-### 15.3 Frequency Mismatch
+### 16.3 Frequency Mismatch
 
 Some macroeconomic variables are not originally weekly.
 
@@ -433,7 +484,7 @@ CPI is monthly and aligned to weekly frequency through forward filling.
 
 This creates a useful weekly analytical dataset but does not turn CPI into a true weekly variable.
 
-### 15.4 Multicollinearity Risk
+### 16.4 Multicollinearity Risk
 
 USD/TRY and EUR/TRY may be highly correlated.
 
@@ -441,35 +492,46 @@ For this reason, the project uses separate Core USD and Core EUR model specifica
 
 This reduces the risk of misleading coefficient interpretation caused by multicollinearity.
 
-### 15.5 Funding Cost Interpretation
+### 16.5 Funding Cost Interpretation
 
 CBRT weighted average funding cost should not be interpreted as the official one-week repo policy rate.
 
 It is used as an operational funding condition indicator.
 
-### 15.6 Investment Advice Limitation
+### 16.6 Rolling Correlation Limitation
+
+Rolling correlation analysis shows time-varying association, not causality.
+
+Rolling correlations may change because of market regimes, volatility shifts, policy expectations, liquidity conditions or omitted variables.
+
+Therefore, rolling results should be interpreted as descriptive evidence of time-varying sensitivity.
+
+### 16.7 Investment Advice Limitation
 
 The project is not designed to generate investment recommendations.
 
 The results are for educational, analytical and portfolio presentation purposes.
 
-## 16. Dashboard Methodology
+## 17. Dashboard Methodology
 
 The Streamlit dashboard presents the project outputs in an interactive format.
 
 Dashboard pages include:
 
-* Market Overview
-* Stock Comparison
-* Risk Metrics
-* Risk Scores
-* Macro Sensitivity
+- Market Overview
+- Stock Comparison
+- Risk Metrics
+- Risk Scores
+- Macro Sensitivity
+- Model Diagnostics
+- Robust Results
+- Rolling Macro Sensitivity
 
 The dashboard does not calculate the full analysis from scratch. Instead, it reads processed datasets and output files generated by the project pipeline.
 
 This makes the dashboard faster and easier to use.
 
-## 17. Reproducibility
+## 18. Reproducibility
 
 The project is designed to be reproducible through modular Python scripts.
 
@@ -484,14 +546,15 @@ python -m src.merge_macro
 python -m src.macro_analysis
 python -m src.model_diagnostics
 python -m src.robust_macro_regression
-streamlit run dashboard/app.py
+python -m src.rolling_analysis
+python -m streamlit run dashboard/app.py
 ```
 
 The EVDS API key must be stored in a local `.env` file and should not be committed to GitHub.
 
-## 18. Overall Methodological Summary
+## 19. Overall Methodological Summary
 
-The methodology combines financial time-series processing, risk measurement, scoring, macroeconomic data integration, regression-based sensitivity analysis, model diagnostics and robust inference.
+The methodology combines financial time-series processing, risk measurement, scoring, macroeconomic data integration, regression-based sensitivity analysis, model diagnostics, robust inference and rolling macro sensitivity analysis.
 
 The project provides a structured framework for analyzing BIST banking stocks using both market-based indicators and macroeconomic variables.
 
@@ -499,9 +562,9 @@ The outputs should be interpreted as descriptive and exploratory evidence.
 
 They provide a foundation for future improvements such as:
 
-* Rolling-window analysis
-* Forecasting models
-* Extended model diagnostics
-* Residual visualization
-* Bank-level financial ratio integration
-* More advanced dashboard visualizations
+- Rolling-window model comparison
+- Forecasting models
+- Extended model diagnostics
+- Residual visualization
+- Bank-level financial ratio integration
+- More advanced dashboard visualizations

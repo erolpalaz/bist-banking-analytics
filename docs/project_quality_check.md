@@ -157,7 +157,20 @@ The page now includes:
 * Interpretation notes
 * Raw rolling correlation data inside an expandable section
 
-This improves dashboard readability and supports portfolio presentation quality.
+The dashboard visual presentation has been refined with reusable layout components.
+
+The current dashboard includes:
+
+* Consistent page headers
+* Professional page subtitles
+* Styled insight boxes
+* Styled warning boxes
+* Reusable interpretation note formatting
+* Reusable zero-line helper for Plotly charts
+* Improved sidebar explanation
+* More portfolio-oriented dashboard structure
+
+This improves the project’s presentation quality and makes the dashboard more suitable for CV, GitHub and portfolio review purposes.
 
 ## 9. Current Known Issues
 
@@ -218,8 +231,9 @@ The project currently includes:
 * HC3 robust macro regression
 * Rolling macro sensitivity analysis
 * Refined rolling macro sensitivity dashboard
+* Refined dashboard visual presentation
 * Streamlit dashboard
 * GitHub version control
 * Project documentation
 
-The project is ready for the next development phase: advanced visual refinement, rolling analysis interpretation and optional forecasting extensions.
+The project is ready for the next development phase: advanced dashboard improvements, additional model interpretation and optional forecasting extensions.

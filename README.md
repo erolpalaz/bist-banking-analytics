@@ -61,6 +61,10 @@ The project includes the following components:
 * Rolling macro sensitivity analysis
 * 52-week rolling correlation analysis
 * Streamlit dashboard
+* Reusable dashboard layout components
+* Refined dashboard visual presentation
+* Styled interpretation boxes
+* Consistent page headers and subtitles
 * Project documentation
 
 ## Data Sources
@@ -393,6 +397,21 @@ The dashboard includes the following pages:
 | Robust Results            | HC3 robust regression summaries and detailed robust outputs                                                                |
 | Rolling Macro Sensitivity | 52-week rolling correlation analysis with automated insight text, relationship stability overview and interpretation notes |
 
+## Dashboard Visual Refinement
+
+The Streamlit dashboard was refined with reusable layout and presentation components.
+
+The dashboard now includes:
+
+* Consistent page headers and subtitles
+* Styled interpretation boxes
+* Cleaner sidebar project description
+* Reusable zero-line helper for correlation and coefficient charts
+* Improved interpretation notes
+* More portfolio-oriented page explanations
+
+These improvements make the dashboard easier to understand for GitHub viewers, recruiters and portfolio reviewers.
+
 ## Main Analytical Methods
 
 ## Weekly Return Calculation
@@ -685,8 +704,8 @@ python -m streamlit run dashboard/app.py
 
 Possible future improvements include:
 
-* Rolling-window correlation analysis
 * Rolling beta analysis
+* Rolling regression analysis
 * Forecasting models
 * Bank-level financial ratio integration
 * Residual visualization

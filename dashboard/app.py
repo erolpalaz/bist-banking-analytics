@@ -13,6 +13,157 @@ st.set_page_config(
 )
 
 
+def apply_custom_style():
+    """
+    Apply lightweight custom CSS for a cleaner portfolio dashboard look.
+    """
+    st.markdown(
+        """
+        <style>
+        .main .block-container {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+
+        .dashboard-title {
+            font-size: 2.1rem;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+        }
+
+        .dashboard-subtitle {
+            font-size: 1rem;
+            color: #6c757d;
+            margin-bottom: 1.2rem;
+        }
+
+        .section-caption {
+            font-size: 0.92rem;
+            color: #6c757d;
+            margin-top: -0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .insight-box {
+            border-left: 5px solid #4c78a8;
+            background-color: rgba(76, 120, 168, 0.08);
+            padding: 1rem 1.1rem;
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .warning-box {
+            border-left: 5px solid #f2a541;
+            background-color: rgba(242, 165, 65, 0.10);
+            padding: 1rem 1.1rem;
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .success-box {
+            border-left: 5px solid #2ca02c;
+            background-color: rgba(44, 160, 44, 0.10);
+            padding: 1rem 1.1rem;
+            border-radius: 0.5rem;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .small-note {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+def render_page_header(title: str, subtitle: str):
+    """
+    Render a consistent dashboard page header.
+    """
+    st.markdown(
+        f"""
+        <div class="dashboard-title">{title}</div>
+        <div class="dashboard-subtitle">{subtitle}</div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+def render_section_caption(text: str):
+    """
+    Render a small explanatory caption under section titles.
+    """
+    st.markdown(
+        f"""
+        <div class="section-caption">{text}</div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+def render_insight_box(text: str, box_type: str = "info"):
+    """
+    Render a styled interpretation box.
+
+    box_type options:
+    - info
+    - warning
+    - success
+    """
+    class_map = {
+        "info": "insight-box",
+        "warning": "warning-box",
+        "success": "success-box",
+    }
+
+    css_class = class_map.get(box_type, "insight-box")
+
+    st.markdown(
+        f"""
+        <div class="{css_class}">
+            {text}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+def render_interpretation_note(items: list[str]):
+    """
+    Render interpretation notes in a consistent format.
+    """
+    if not items:
+        return
+
+    note_html = "<ul>"
+
+    for item in items:
+        note_html += f"<li>{item}</li>"
+
+    note_html += "</ul>"
+
+    st.markdown(note_html, unsafe_allow_html=True)
+
+
+def add_zero_line(fig, annotation_text: str = "Zero line"):
+    """
+    Add a horizontal zero reference line to a Plotly figure.
+    """
+    fig.add_hline(
+        y=0,
+        line_dash="dash",
+        annotation_text=annotation_text,
+        annotation_position="bottom right"
+    )
+
+    return fig
+
+
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT_DIR / "data"
 PROCESSED_DIR = DATA_DIR / "processed"
@@ -271,7 +422,10 @@ def create_cumulative_return_table(stock_weekly: pd.DataFrame) -> pd.DataFrame:
 
 
 def page_market_overview():
-    st.title("Market Overview")
+    render_page_header(
+        "Market Overview",
+        "Analyze cumulative weekly performance and recent market data for selected BIST banking stocks and the BIST 100 benchmark."
+    )
 
     stock_weekly = load_csv(PATHS["stock_weekly"], parse_dates=["Date"])
     risk_metrics = load_csv(PATHS["risk_metrics"])
@@ -282,12 +436,6 @@ def page_market_overview():
             "python -m src.data_loader\npython -m src.preprocessing"
         )
         return
-
-    st.markdown(
-        """
-        This page provides a general overview of selected BIST banking stocks and the BIST 100 benchmark.
-        """
-    )
 
     tickers = sorted(stock_weekly["Ticker"].dropna().unique().tolist())
 
@@ -337,7 +485,10 @@ def page_market_overview():
 
 
 def page_stock_comparison():
-    st.title("Stock Comparison")
+    render_page_header(
+        "Stock Comparison",
+        "Compare selected banking stocks using price, weekly return, volume and cumulative return charts."
+    )
 
     stock_weekly = load_csv(PATHS["stock_weekly"], parse_dates=["Date"])
 
@@ -399,7 +550,10 @@ def page_stock_comparison():
 
 
 def page_risk_metrics():
-    st.title("Risk Metrics")
+    render_page_header(
+        "Risk Metrics",
+        "Review return, volatility, drawdown and risk-adjusted performance metrics for selected banking stocks."
+    )
 
     risk_metrics = load_csv(PATHS["risk_metrics"])
 
@@ -410,10 +564,9 @@ def page_risk_metrics():
         )
         return
 
-    st.markdown(
-        """
-        This page presents risk and performance metrics for selected BIST banking stocks.
-        """
+    render_insight_box(
+        "Risk metrics help compare return potential, downside risk and volatility across selected BIST banking stocks. Higher return alone is not sufficient; drawdown and Sharpe ratio should be interpreted together.",
+        box_type="info"
     )
 
     st.dataframe(risk_metrics, use_container_width=True)
@@ -446,7 +599,10 @@ def page_risk_metrics():
 
 
 def page_risk_scores():
-    st.title("Risk Scores")
+    render_page_header(
+        "Risk Scores",
+        "Compare composite risk and performance scores generated from the project’s risk metric framework."
+    )
 
     risk_scores = load_csv(PATHS["risk_scores"])
 
@@ -457,10 +613,9 @@ def page_risk_scores():
         )
         return
 
-    st.markdown(
-        """
-        This page presents composite risk and performance scores.
-        """
+    render_insight_box(
+        "Risk and performance scores are relative to the selected banking stock universe. They are designed for comparison and portfolio presentation, not investment recommendation.",
+        box_type="warning"
     )
 
     st.dataframe(risk_scores, use_container_width=True)
@@ -490,7 +645,10 @@ def page_risk_scores():
 
 
 def page_macro_sensitivity():
-    st.title("Macro Sensitivity")
+    render_page_header(
+        "Macro Sensitivity",
+        "Evaluate how weekly banking stock returns are statistically associated with exchange rates, inflation and funding cost indicators."
+    )
 
     correlation = load_csv(PATHS["macro_correlation"])
     model_summary = load_csv(PATHS["macro_model_summary"])
@@ -502,10 +660,9 @@ def page_macro_sensitivity():
         )
         return
 
-    st.markdown(
-        """
-        This page presents macro correlation and OLS macro regression results.
-        """
+    render_insight_box(
+        "Macro sensitivity results should be interpreted as statistical association, not causality. The models are designed to identify directional relationships between banking stock returns and selected macro variables.",
+        box_type="warning"
     )
 
     st.subheader("Macro Correlation Results")
@@ -539,6 +696,8 @@ def page_macro_sensitivity():
             barmode="group",
             title="Correlation Between Weekly Returns and Macro Variables"
         )
+
+        fig_corr = add_zero_line(fig_corr, annotation_text="Zero correlation")
 
         st.plotly_chart(fig_corr, use_container_width=True)
 
@@ -606,13 +765,18 @@ def page_macro_sensitivity():
             title=f"OLS Coefficients - {selected_model}"
         )
 
+        fig_coef = add_zero_line(fig_coef, annotation_text="Zero coefficient")
+
         st.plotly_chart(fig_coef, use_container_width=True)
 
         st.dataframe(coef_df, use_container_width=True)
 
 
 def page_model_diagnostics():
-    st.title("Model Diagnostics")
+    render_page_header(
+        "Model Diagnostics",
+        "Check macro regression quality using adjusted R-squared, residual tests, heteroskedasticity diagnostics and VIF analysis."
+    )
 
     diagnostics = load_csv(PATHS["macro_model_diagnostics"])
     vif_results = load_csv(PATHS["macro_vif_results"])
@@ -624,12 +788,9 @@ def page_model_diagnostics():
         )
         return
 
-    st.markdown(
-        """
-        This page evaluates macro regression models using diagnostic tests such as
-        adjusted R-squared, F-test p-values, Durbin-Watson, Breusch-Pagan,
-        Jarque-Bera and VIF.
-        """
+    render_insight_box(
+        "Diagnostics help evaluate whether the macro regression outputs are statistically reliable. Low adjusted R-squared is expected in weekly financial return models, while VIF values help check multicollinearity risk.",
+        box_type="info"
     )
 
     models = sorted(diagnostics["model_name"].dropna().unique().tolist())
@@ -692,6 +853,8 @@ def page_model_diagnostics():
             barmode="group",
             title="Adjusted R-squared"
         )
+
+        fig_adj = add_zero_line(fig_adj, annotation_text="Zero adjusted R²")
 
         st.plotly_chart(fig_adj, use_container_width=True)
 
@@ -792,11 +955,8 @@ def page_model_diagnostics():
 
             st.plotly_chart(fig_vif, use_container_width=True)
 
-            st.markdown(
-                """
-                VIF values are aggregated using the maximum VIF across selected tickers.
-                This prevents repeated ticker-level VIF rows from being visually summed in the chart.
-                """
+            render_section_caption(
+                "VIF values are aggregated using the maximum VIF across selected tickers. This prevents repeated ticker-level VIF rows from being visually summed in the chart."
             )
 
             st.subheader("Aggregated VIF Table")
@@ -809,7 +969,10 @@ def page_model_diagnostics():
 
 
 def page_robust_results():
-    st.title("Robust Results")
+    render_page_header(
+        "Robust Results",
+        "Review HC3 robust regression outputs to evaluate macro variable significance under possible heteroskedasticity."
+    )
 
     robust_summary = load_csv(PATHS["robust_summary"])
     robust_all = load_csv(PATHS["robust_all_models"])
@@ -821,11 +984,9 @@ def page_robust_results():
         )
         return
 
-    st.markdown(
-        """
-        This page presents macro regression results estimated with HC3 robust standard errors.
-        Robust standard errors improve inference when heteroskedasticity may be present.
-        """
+    render_insight_box(
+        "HC3 robust standard errors keep the OLS coefficient estimates but adjust standard errors, t-statistics, p-values and confidence intervals when heteroskedasticity may be present.",
+        box_type="info"
     )
 
     models = sorted(robust_summary["model_name"].dropna().unique().tolist())
@@ -977,13 +1138,18 @@ def page_robust_results():
             title=f"Robust Coefficients - {selected_model}"
         )
 
+        fig_robust_coef = add_zero_line(fig_robust_coef, annotation_text="Zero coefficient")
+
         st.plotly_chart(fig_robust_coef, use_container_width=True)
 
         st.dataframe(robust_coef_df, use_container_width=True)
 
 
 def page_rolling_macro_sensitivity():
-    st.title("Rolling Macro Sensitivity")
+    render_page_header(
+        "Rolling Macro Sensitivity",
+        "Track whether the relationship between banking stock returns and macro variables changes over time using 52-week rolling correlations."
+    )
 
     rolling_df = load_csv(PATHS["rolling_macro_correlation"], parse_dates=["Date"])
     summary_df = load_csv(PATHS["rolling_macro_correlation_summary"], parse_dates=["latest_date"])
@@ -994,15 +1160,6 @@ def page_rolling_macro_sensitivity():
             "python -m src.rolling_analysis"
         )
         return
-
-    st.markdown(
-        """
-        This page analyzes whether the relationship between weekly banking stock returns
-        and macroeconomic variables changes over time.
-
-        Rolling correlations are calculated using a 52-week window.
-        """
-    )
 
     tickers = sorted(rolling_df["Ticker"].dropna().unique().tolist())
     macro_vars = sorted(rolling_df["macro_variable"].dropna().unique().tolist())
@@ -1085,11 +1242,11 @@ def page_rolling_macro_sensitivity():
     insight_text = create_rolling_insight_text(summary_filtered)
 
     if mostly_negative_count > 0 and mostly_negative_count >= mostly_positive_count:
-        st.info(insight_text)
+        render_insight_box(insight_text, box_type="info")
     elif mostly_positive_count > 0 and mostly_positive_count > mostly_negative_count:
-        st.success(insight_text)
+        render_insight_box(insight_text, box_type="success")
     else:
-        st.warning(insight_text)
+        render_insight_box(insight_text, box_type="warning")
 
     st.subheader("Relationship Stability Overview")
 
@@ -1134,12 +1291,7 @@ def page_rolling_macro_sensitivity():
         title="52-Week Rolling Correlation"
     )
 
-    fig_line.add_hline(
-        y=0,
-        line_dash="dash",
-        annotation_text="Zero correlation",
-        annotation_position="bottom right"
-    )
+    fig_line = add_zero_line(fig_line, annotation_text="Zero correlation")
 
     st.plotly_chart(fig_line, use_container_width=True)
 
@@ -1158,12 +1310,7 @@ def page_rolling_macro_sensitivity():
             title="Latest Rolling Correlation by Ticker"
         )
 
-        fig_latest.add_hline(
-            y=0,
-            line_dash="dash",
-            annotation_text="Zero correlation",
-            annotation_position="bottom right"
-        )
+        fig_latest = add_zero_line(fig_latest, annotation_text="Zero correlation")
 
         st.plotly_chart(fig_latest, use_container_width=True)
 
@@ -1200,15 +1347,15 @@ def page_rolling_macro_sensitivity():
 
     st.subheader("Interpretation Notes")
 
-    st.markdown(
-        """
-        - Rolling correlation shows time-varying association, not causality.
-        - A mostly negative classification means that the relationship was negative in most rolling windows.
-        - A time-varying classification means that the direction of the relationship changed across periods.
-        - The 52-week window smooths short-term noise but may react slowly to sudden market regime changes.
-        - CPI is originally monthly and aligned to weekly frequency, so it should be interpreted as an inflation regime indicator.
-        - Funding cost is the CBRT weighted average funding cost, not the official one-week repo policy rate.
-        """
+    render_interpretation_note(
+        [
+            "Rolling correlation shows time-varying association, not causality.",
+            "A mostly negative classification means that the relationship was negative in most rolling windows.",
+            "A time-varying classification means that the direction of the relationship changed across periods.",
+            "The 52-week window smooths short-term noise but may react slowly to sudden market regime changes.",
+            "CPI is originally monthly and aligned to weekly frequency, so it should be interpreted as an inflation regime indicator.",
+            "Funding cost is the CBRT weighted average funding cost, not the official one-week repo policy rate."
+        ]
     )
 
     with st.expander("Show Rolling Correlation Raw Data"):
@@ -1251,8 +1398,18 @@ def show_sidebar():
         """
         **Project Scope**
 
-        BIST banking stock analytics with risk metrics, macro sensitivity analysis,
-        model diagnostics, robust inference and rolling macro sensitivity.
+        End-to-end BIST banking analytics project combining:
+
+        - Market data analysis
+        - Risk metrics and scoring
+        - TCMB EVDS macro data
+        - OLS macro sensitivity models
+        - Model diagnostics
+        - HC3 robust inference
+        - Rolling macro sensitivity
+        - Interactive dashboard reporting
+
+        **Purpose:** CV/GitHub-ready financial analytics portfolio project.
         """
     )
 
@@ -1260,6 +1417,8 @@ def show_sidebar():
 
 
 def main():
+    apply_custom_style()
+
     selected_page = show_sidebar()
 
     if selected_page == "Market Overview":

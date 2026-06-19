@@ -135,6 +135,121 @@ def split_diagnostic_warnings(warning_series: pd.Series) -> pd.DataFrame:
     return warning_counts
 
 
+def summarize_relationship_stability(summary_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Summarize relationship stability classifications.
+    """
+    if summary_df.empty or "relationship_stability" not in summary_df.columns:
+        return pd.DataFrame(columns=["relationship_stability", "count", "share"])
+
+    stability = (
+        summary_df["relationship_stability"]
+        .fillna("not_available")
+        .value_counts()
+        .reset_index()
+    )
+
+    stability.columns = ["relationship_stability", "count"]
+    stability["share"] = stability["count"] / stability["count"].sum()
+
+    return stability
+
+
+def create_rolling_insight_text(summary_df: pd.DataFrame) -> str:
+    """
+    Create a short dashboard interpretation based on selected rolling correlation results.
+    """
+    if summary_df.empty:
+        return "No rolling correlation summary is available for the selected filters."
+
+    selected_variables = sorted(summary_df["macro_variable"].dropna().unique().tolist())
+    selected_tickers = sorted(summary_df["Ticker"].dropna().unique().tolist())
+
+    avg_corr = summary_df["mean_rolling_correlation"].mean()
+    latest_corr = summary_df["latest_rolling_correlation"].mean()
+
+    stability_counts = (
+        summary_df["relationship_stability"]
+        .fillna("not_available")
+        .value_counts()
+        .to_dict()
+    )
+
+    mostly_negative = stability_counts.get("mostly_negative", 0)
+    mostly_positive = stability_counts.get("mostly_positive", 0)
+    unstable = stability_counts.get("unstable_or_time_varying", 0)
+
+    variable_text = ", ".join(selected_variables)
+    ticker_text = ", ".join(selected_tickers)
+
+    if len(selected_variables) == 1 and selected_variables[0] == "usd_try_weekly_change":
+        return (
+            f"For the selected tickers ({ticker_text}), USD/TRY weekly change shows "
+            f"an average rolling correlation of {avg_corr:.4f} and a latest rolling "
+            f"correlation of {latest_corr:.4f}. "
+            f"{mostly_negative} selected relationships are classified as mostly negative. "
+            "This supports the interpretation that USD/TRY movements have a persistent "
+            "negative relationship with selected BIST banking stock returns."
+        )
+
+    if len(selected_variables) == 1 and selected_variables[0] == "eur_try_weekly_change":
+        return (
+            f"For the selected tickers ({ticker_text}), EUR/TRY weekly change has an "
+            f"average rolling correlation of {avg_corr:.4f} and a latest rolling "
+            f"correlation of {latest_corr:.4f}. "
+            "The EUR/TRY relationship appears more time-varying than the USD/TRY relationship, "
+            "which suggests that exchange-rate sensitivity may change across market regimes."
+        )
+
+    if len(selected_variables) == 1 and selected_variables[0] == "cpi_index_yoy_change":
+        return (
+            f"For the selected tickers ({ticker_text}), CPI YoY change shows an average "
+            f"rolling correlation of {avg_corr:.4f} and a latest rolling correlation of "
+            f"{latest_corr:.4f}. "
+            "The relationship is generally weak and time-varying in simple rolling correlation, "
+            "although CPI YoY remains important in the robust regression results."
+        )
+
+    if len(selected_variables) == 1 and selected_variables[0] == "funding_cost":
+        return (
+            f"For the selected tickers ({ticker_text}), funding cost level shows an average "
+            f"rolling correlation of {avg_corr:.4f} and a latest rolling correlation of "
+            f"{latest_corr:.4f}. "
+            "The relationship is not stable enough to be interpreted as a persistent return driver."
+        )
+
+    if len(selected_variables) == 1 and selected_variables[0] == "funding_cost_weekly_diff":
+        return (
+            f"For the selected tickers ({ticker_text}), funding cost weekly difference shows "
+            f"an average rolling correlation of {avg_corr:.4f} and a latest rolling correlation "
+            f"of {latest_corr:.4f}. "
+            "The latest values may indicate that short-term changes in funding conditions have "
+            "become more relevant in recent periods."
+        )
+
+    return (
+        f"For the selected variables ({variable_text}), the average rolling correlation is "
+        f"{avg_corr:.4f} and the latest rolling correlation is {latest_corr:.4f}. "
+        f"The selected results include {mostly_negative} mostly negative, {mostly_positive} "
+        f"mostly positive and {unstable} unstable or time-varying relationships. "
+        "This confirms that macro sensitivity is not constant across variables and tickers."
+    )
+
+
+def format_relationship_label(value: str) -> str:
+    """
+    Make relationship stability labels more readable for dashboard tables.
+    """
+    label_map = {
+        "mostly_positive": "Mostly Positive",
+        "mostly_negative": "Mostly Negative",
+        "unstable_or_time_varying": "Unstable / Time-varying",
+        "not_available": "Not Available",
+    }
+
+    return label_map.get(str(value), str(value))
+
+
 def create_cumulative_return_table(stock_weekly: pd.DataFrame) -> pd.DataFrame:
     if stock_weekly.empty or "weekly_return" not in stock_weekly.columns:
         return pd.DataFrame()
@@ -935,13 +1050,23 @@ def page_rolling_macro_sensitivity():
     )
 
     mostly_negative_count = 0
+    mostly_positive_count = 0
+    unstable_count = 0
 
     if "relationship_stability" in summary_filtered.columns:
         mostly_negative_count = summary_filtered[
             summary_filtered["relationship_stability"] == "mostly_negative"
         ].shape[0]
 
-    kpi1, kpi2, kpi3 = st.columns(3)
+        mostly_positive_count = summary_filtered[
+            summary_filtered["relationship_stability"] == "mostly_positive"
+        ].shape[0]
+
+        unstable_count = summary_filtered[
+            summary_filtered["relationship_stability"] == "unstable_or_time_varying"
+        ].shape[0]
+
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
     with kpi1:
         st.metric("Average Rolling Correlation", format_decimal(mean_corr))
@@ -950,7 +1075,53 @@ def page_rolling_macro_sensitivity():
         st.metric("Latest Rolling Correlation", format_decimal(latest_mean))
 
     with kpi3:
-        st.metric("Mostly Negative Relations", mostly_negative_count)
+        st.metric("Mostly Negative", mostly_negative_count)
+
+    with kpi4:
+        st.metric("Time-varying", unstable_count)
+
+    st.subheader("Key Rolling Insight")
+
+    insight_text = create_rolling_insight_text(summary_filtered)
+
+    if mostly_negative_count > 0 and mostly_negative_count >= mostly_positive_count:
+        st.info(insight_text)
+    elif mostly_positive_count > 0 and mostly_positive_count > mostly_negative_count:
+        st.success(insight_text)
+    else:
+        st.warning(insight_text)
+
+    st.subheader("Relationship Stability Overview")
+
+    stability_summary = summarize_relationship_stability(summary_filtered)
+
+    if not stability_summary.empty:
+        stability_summary["share_formatted"] = stability_summary["share"].apply(format_percentage)
+        stability_summary["relationship_label"] = stability_summary["relationship_stability"].apply(format_relationship_label)
+
+        col_stab1, col_stab2 = st.columns([1, 1])
+
+        with col_stab1:
+            fig_stability = px.bar(
+                stability_summary,
+                x="relationship_label",
+                y="count",
+                title="Relationship Stability Counts"
+            )
+
+            st.plotly_chart(fig_stability, use_container_width=True)
+
+        with col_stab2:
+            st.dataframe(
+                stability_summary[
+                    [
+                        "relationship_label",
+                        "count",
+                        "share_formatted"
+                    ]
+                ],
+                use_container_width=True
+            )
 
     st.subheader("Rolling Correlation Over Time")
 
@@ -963,48 +1134,48 @@ def page_rolling_macro_sensitivity():
         title="52-Week Rolling Correlation"
     )
 
+    fig_line.add_hline(
+        y=0,
+        line_dash="dash",
+        annotation_text="Zero correlation",
+        annotation_position="bottom right"
+    )
+
     st.plotly_chart(fig_line, use_container_width=True)
 
     st.subheader("Latest Rolling Correlation")
 
     if not summary_filtered.empty and "latest_rolling_correlation" in summary_filtered.columns:
+        latest_chart_df = summary_filtered.copy()
+        latest_chart_df["relationship_label"] = latest_chart_df["relationship_stability"].apply(format_relationship_label)
+
         fig_latest = px.bar(
-            summary_filtered.sort_values("latest_rolling_correlation"),
+            latest_chart_df.sort_values("latest_rolling_correlation"),
             x="Ticker",
             y="latest_rolling_correlation",
-            color="macro_variable",
+            color="relationship_label",
             barmode="group",
             title="Latest Rolling Correlation by Ticker"
         )
 
+        fig_latest.add_hline(
+            y=0,
+            line_dash="dash",
+            annotation_text="Zero correlation",
+            annotation_position="bottom right"
+        )
+
         st.plotly_chart(fig_latest, use_container_width=True)
-
-    st.subheader("Relationship Stability Summary")
-
-    if not summary_filtered.empty and "relationship_stability" in summary_filtered.columns:
-        stability_counts = (
-            summary_filtered["relationship_stability"]
-            .value_counts()
-            .reset_index()
-        )
-
-        stability_counts.columns = ["relationship_stability", "count"]
-
-        fig_stability = px.bar(
-            stability_counts,
-            x="relationship_stability",
-            y="count",
-            title="Relationship Stability Counts"
-        )
-
-        st.plotly_chart(fig_stability, use_container_width=True)
-
-        st.dataframe(stability_counts, use_container_width=True)
 
     st.subheader("Rolling Correlation Summary Table")
 
+    summary_table = summary_filtered.copy()
+
+    if "relationship_stability" in summary_table.columns:
+        summary_table["relationship_label"] = summary_table["relationship_stability"].apply(format_relationship_label)
+
     summary_display_cols = get_available_columns(
-        summary_filtered,
+        summary_table,
         [
             "Ticker",
             "macro_variable",
@@ -1016,34 +1187,46 @@ def page_rolling_macro_sensitivity():
             "latest_date",
             "latest_rolling_correlation",
             "positive_correlation_share",
-            "relationship_stability"
+            "relationship_label"
         ]
     )
 
     st.dataframe(
-        summary_filtered[summary_display_cols].sort_values(
+        summary_table[summary_display_cols].sort_values(
             ["macro_variable", "Ticker"]
         ),
         use_container_width=True
     )
 
-    st.subheader("Rolling Correlation Raw Data")
+    st.subheader("Interpretation Notes")
 
-    raw_display_cols = get_available_columns(
-        filtered,
-        [
-            "Date",
-            "Ticker",
-            "macro_variable",
-            "rolling_window",
-            "rolling_correlation"
-        ]
+    st.markdown(
+        """
+        - Rolling correlation shows time-varying association, not causality.
+        - A mostly negative classification means that the relationship was negative in most rolling windows.
+        - A time-varying classification means that the direction of the relationship changed across periods.
+        - The 52-week window smooths short-term noise but may react slowly to sudden market regime changes.
+        - CPI is originally monthly and aligned to weekly frequency, so it should be interpreted as an inflation regime indicator.
+        - Funding cost is the CBRT weighted average funding cost, not the official one-week repo policy rate.
+        """
     )
 
-    st.dataframe(
-        filtered[raw_display_cols].sort_values(["Date", "Ticker"], ascending=[False, True]).head(500),
-        use_container_width=True
-    )
+    with st.expander("Show Rolling Correlation Raw Data"):
+        raw_display_cols = get_available_columns(
+            filtered,
+            [
+                "Date",
+                "Ticker",
+                "macro_variable",
+                "rolling_window",
+                "rolling_correlation"
+            ]
+        )
+
+        st.dataframe(
+            filtered[raw_display_cols].sort_values(["Date", "Ticker"], ascending=[False, True]).head(500),
+            use_container_width=True
+        )
 
 
 def show_sidebar():

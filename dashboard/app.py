@@ -30,6 +30,8 @@ PATHS = {
     "macro_vif_results": OUTPUTS_DIR / "macro_vif_results.csv",
     "robust_summary": OUTPUTS_DIR / "robust_macro_regression_summary.csv",
     "robust_all_models": OUTPUTS_DIR / "robust_macro_regression_all_models.csv",
+    "rolling_macro_correlation": OUTPUTS_DIR / "rolling_macro_correlation.csv",
+    "rolling_macro_correlation_summary": OUTPUTS_DIR / "rolling_macro_correlation_summary.csv",
 }
 
 
@@ -107,10 +109,6 @@ def clean_warning_text(value):
 def split_diagnostic_warnings(warning_series: pd.Series) -> pd.DataFrame:
     """
     Split combined diagnostic warning strings into individual warning counts.
-
-    Example:
-    'low_explanatory_power; residuals_not_normal'
-    becomes two separate warning items.
     """
     warning_items = []
 
@@ -869,6 +867,185 @@ def page_robust_results():
         st.dataframe(robust_coef_df, use_container_width=True)
 
 
+def page_rolling_macro_sensitivity():
+    st.title("Rolling Macro Sensitivity")
+
+    rolling_df = load_csv(PATHS["rolling_macro_correlation"], parse_dates=["Date"])
+    summary_df = load_csv(PATHS["rolling_macro_correlation_summary"], parse_dates=["latest_date"])
+
+    if rolling_df.empty or summary_df.empty:
+        show_missing_file_warning(
+            PATHS["rolling_macro_correlation"],
+            "python -m src.rolling_analysis"
+        )
+        return
+
+    st.markdown(
+        """
+        This page analyzes whether the relationship between weekly banking stock returns
+        and macroeconomic variables changes over time.
+
+        Rolling correlations are calculated using a 52-week window.
+        """
+    )
+
+    tickers = sorted(rolling_df["Ticker"].dropna().unique().tolist())
+    macro_vars = sorted(rolling_df["macro_variable"].dropna().unique().tolist())
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        selected_tickers = st.multiselect(
+            "Select tickers",
+            options=tickers,
+            default=tickers
+        )
+
+    with col2:
+        selected_macro_vars = st.multiselect(
+            "Select macro variables",
+            options=macro_vars,
+            default=["usd_try_weekly_change"] if "usd_try_weekly_change" in macro_vars else macro_vars[:1]
+        )
+
+    filtered = rolling_df[
+        rolling_df["Ticker"].isin(selected_tickers)
+        & rolling_df["macro_variable"].isin(selected_macro_vars)
+    ].copy()
+
+    summary_filtered = summary_df[
+        summary_df["Ticker"].isin(selected_tickers)
+        & summary_df["macro_variable"].isin(selected_macro_vars)
+    ].copy()
+
+    if filtered.empty:
+        st.warning("No rolling correlation data found for selected filters.")
+        return
+
+    latest_mean = (
+        summary_filtered["latest_rolling_correlation"].mean()
+        if "latest_rolling_correlation" in summary_filtered.columns and not summary_filtered.empty
+        else np.nan
+    )
+
+    mean_corr = (
+        summary_filtered["mean_rolling_correlation"].mean()
+        if "mean_rolling_correlation" in summary_filtered.columns and not summary_filtered.empty
+        else np.nan
+    )
+
+    mostly_negative_count = 0
+
+    if "relationship_stability" in summary_filtered.columns:
+        mostly_negative_count = summary_filtered[
+            summary_filtered["relationship_stability"] == "mostly_negative"
+        ].shape[0]
+
+    kpi1, kpi2, kpi3 = st.columns(3)
+
+    with kpi1:
+        st.metric("Average Rolling Correlation", format_decimal(mean_corr))
+
+    with kpi2:
+        st.metric("Latest Rolling Correlation", format_decimal(latest_mean))
+
+    with kpi3:
+        st.metric("Mostly Negative Relations", mostly_negative_count)
+
+    st.subheader("Rolling Correlation Over Time")
+
+    fig_line = px.line(
+        filtered,
+        x="Date",
+        y="rolling_correlation",
+        color="Ticker",
+        line_dash="macro_variable",
+        title="52-Week Rolling Correlation"
+    )
+
+    st.plotly_chart(fig_line, use_container_width=True)
+
+    st.subheader("Latest Rolling Correlation")
+
+    if not summary_filtered.empty and "latest_rolling_correlation" in summary_filtered.columns:
+        fig_latest = px.bar(
+            summary_filtered.sort_values("latest_rolling_correlation"),
+            x="Ticker",
+            y="latest_rolling_correlation",
+            color="macro_variable",
+            barmode="group",
+            title="Latest Rolling Correlation by Ticker"
+        )
+
+        st.plotly_chart(fig_latest, use_container_width=True)
+
+    st.subheader("Relationship Stability Summary")
+
+    if not summary_filtered.empty and "relationship_stability" in summary_filtered.columns:
+        stability_counts = (
+            summary_filtered["relationship_stability"]
+            .value_counts()
+            .reset_index()
+        )
+
+        stability_counts.columns = ["relationship_stability", "count"]
+
+        fig_stability = px.bar(
+            stability_counts,
+            x="relationship_stability",
+            y="count",
+            title="Relationship Stability Counts"
+        )
+
+        st.plotly_chart(fig_stability, use_container_width=True)
+
+        st.dataframe(stability_counts, use_container_width=True)
+
+    st.subheader("Rolling Correlation Summary Table")
+
+    summary_display_cols = get_available_columns(
+        summary_filtered,
+        [
+            "Ticker",
+            "macro_variable",
+            "observations",
+            "mean_rolling_correlation",
+            "median_rolling_correlation",
+            "min_rolling_correlation",
+            "max_rolling_correlation",
+            "latest_date",
+            "latest_rolling_correlation",
+            "positive_correlation_share",
+            "relationship_stability"
+        ]
+    )
+
+    st.dataframe(
+        summary_filtered[summary_display_cols].sort_values(
+            ["macro_variable", "Ticker"]
+        ),
+        use_container_width=True
+    )
+
+    st.subheader("Rolling Correlation Raw Data")
+
+    raw_display_cols = get_available_columns(
+        filtered,
+        [
+            "Date",
+            "Ticker",
+            "macro_variable",
+            "rolling_window",
+            "rolling_correlation"
+        ]
+    )
+
+    st.dataframe(
+        filtered[raw_display_cols].sort_values(["Date", "Ticker"], ascending=[False, True]).head(500),
+        use_container_width=True
+    )
+
+
 def show_sidebar():
     st.sidebar.title("BIST Banking Analytics")
 
@@ -880,6 +1057,7 @@ def show_sidebar():
         "Macro Sensitivity",
         "Model Diagnostics",
         "Robust Results",
+        "Rolling Macro Sensitivity",
     ]
 
     selected_page = st.sidebar.radio("Navigation", pages)
@@ -891,7 +1069,7 @@ def show_sidebar():
         **Project Scope**
 
         BIST banking stock analytics with risk metrics, macro sensitivity analysis,
-        model diagnostics and robust inference.
+        model diagnostics, robust inference and rolling macro sensitivity.
         """
     )
 
@@ -921,6 +1099,9 @@ def main():
 
     elif selected_page == "Robust Results":
         page_robust_results()
+
+    elif selected_page == "Rolling Macro Sensitivity":
+        page_rolling_macro_sensitivity()
 
 
 if __name__ == "__main__":
